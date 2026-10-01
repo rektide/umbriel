@@ -114,3 +114,9 @@ Future checks should measure mid-flight presentation, spacing, indicator visibil
 - [Scrolling layout](/docs/user/layout.md#scrolling-layout): destination framing and the relation between strip axis and workspace axis.
 
 No compositor code or user configuration has been changed, and no visual/runtime verification has been performed in this investigation.
+
+# Addendum: user direction after initial investigation
+
+The user prefers a **traveling visual focus ring**. Actual focus passing through intermediate windows is somewhat anti-desired, but acceptable as a direct implementation shortcut: move focus along the path from origin to destination. Do not reinterpret that tolerance as a requirement to activate intermediate apps, or reject it outright if a cheap experiment would clarify the visual effect.
+
+Multiple vertically arranged workspaces can be left out of the first exploration, but eventual support is explicitly desired. Initial scope can be a single scrolling workspace; preserve the distinction between strip travel and workspace-axis travel so the latter can be added deliberately. No implementation has been requested by this clarification.
