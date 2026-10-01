@@ -30,3 +30,7 @@ Known tradeoff: ordinary window moves/resizes/reflows use that same ramp. No lea
 ## Throwaway visual sketch
 
 `.test-agent/window-navigation/focus-travel.prototype.html` compares viewport-leading travel, a direct screen-space glide, and intermediate highlight hops. It is a dependency-free browser simulation, not compositor evidence. Long jumps in the leading model can park the ring at the forward edge before the destination arrives; the human question is whether that reads as useful anticipation or excessive edge-dwelling. The scratch README explains controls and cleanup. Preview could not be opened automatically because this session has no connected desktop browser; JavaScript syntax was checked, but the page has not been visually verified.
+
+## Implementation recovery checkpoint
+
+The initial runtime patch and screenshot evidence are committed, but [runtime review](review0.sol61.md) requires further correctness and coverage fixes before a live trial. The implementation agent reached its provider usage limit during those revisions, after committing through `80f023a2` and drafting three replacement checks (`221_focus_travel_journey.sh`, `222_focus_travel_retarget.sh`, `223_focus_travel_seat.sh`). A replacement agent is preserving the drafts before completing them and reconciling the review requirements against the actual committed code. Do not treat those drafts or the earlier passing check as proof that the full revised behavior is ready. Smooth-scrolling configuration remains applied; the patched compositor remains uninstalled.
