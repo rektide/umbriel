@@ -40,3 +40,11 @@ Changes required; no material scope creep found. Actual keyboard focus stepping 
 The committed predecessor is preserved. The implementation agent has been authorized to fix these gaps in separate coherent commits, split the runtime checks, use rendered-frame convergence, and update evidence claims. No patched-compositor installation or live setting change is authorized by this review.
 
 **Summary:** Standards: 4 findings (3 hard violations, 1 judgment call), worst is the non-rendered settling barrier. Spec: 4 findings, worst is cancellation reading the already-replaced seat focus. Parent findings remain separately listed; neither axis masks the other.
+
+# Addendum: destination removal policy
+
+The recovery checkpoint in [implementation1](/design/window-navigation/implementation1.sol61.md) reports the full Meson suite green and 10 of 11 focused rendered checks passing. The remaining regression exposes a policy distinction: `View::handleUnmap` automatically selects a surviving neighbor with `FocusReason::Directional` before the old destination detaches. The traveling ring interprets this as another intentional selection and retargets, defeating immediate destination-removal cancellation.
+
+Parent decision: **the visual journey ends when the selected destination disappears**. Keep automatic replacement keyboard focus and column reveal unchanged, but distinguish the automatic unmap/removal reason from intentional directional navigation. A new `FocusReason::Removal` (or equivalent explicit name) should share the existing reveal policy while cancelling—not launching or retargeting—the visual journey. This preserves ordinary compositor behavior and the user's explicit destination intent without coupling visual suppression to an arbitrary timer or changing every directional request to startup focus.
+
+The failing rendered regression must remain intact until this policy change makes it pass. A fresh implementation checkpoint will record the source change and rerun results; the predecessor's 10/11 record remains historical evidence, not a completion claim.
