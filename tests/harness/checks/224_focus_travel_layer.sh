@@ -26,6 +26,8 @@ sleep 0.3
 warmup
 settled_shot "$UMBRIEL_RUNTIME_DIR/setup.png"
 log="$UMBRIEL_RUNTIME_DIR/layer.log"
+# Headless seats have no keyboard until a virtual input client provides one.
+"$UMBRIEL_POINTER_CLIENT" 1280 720 mod none pause 60000 > "$UMBRIEL_RUNTIME_DIR/keyboard.log" 2>&1 &
 "$UMBRIEL_LAYER_CLIENT" HEADLESS-1 0 bottom-layer keyboard=exclusive > "$log" 2>&1 &
 pid=$!
 for _ in $(seq 60); do
