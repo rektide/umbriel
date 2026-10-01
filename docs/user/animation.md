@@ -28,6 +28,10 @@ scale = 0.8           # 0.1-1.0, used by "popin"
 enabled = true
 curve = "spring:1,4400"
 
+[animation.focus_travel]
+enabled = false
+lead = 0.6             # 0.0-1.0; how far the ring leads the panning layout
+
 [animation.workspaces]
 enabled = true
 curve = "spring:1,800"
@@ -77,6 +81,7 @@ Each event's own defaults:
 | `windows_in`      | yes     | `spring:1,1900`   | 278 ms |
 | `windows_out`     | yes     | `spring:1,900`    | 403 ms |
 | `windows_move`    | yes     | `spring:1,4400`   | 183 ms |
+| `focus_travel`    | no      | —                 | borrows `windows_move` |
 | `workspaces`      | yes     | `spring:1,800`    | 428 ms |
 | `overview`        | yes     | `spring:1,800`    | 428 ms |
 | `scratchpad`      | yes     | `spring:1,800`    | 428 ms |
@@ -97,6 +102,7 @@ fields are specific to individual event tables:
 | `[animation.windows_in]`    | `style` (`popin`, `zoom`, `slide`, `fade`, or `none`); `scale` (0.1-1.0, for `popin`) | Window open. A tiled opener waits for the neighbour reflow its admission caused, then runs `windows_in` in its settled slot. `popin` and `zoom` scale inside that slot. `slide` rises into place for floating and fullscreen windows and becomes visible sooner than `fade`; tiled windows use the same quicker fade without leaving their slot. |
 | `[animation.windows_out]`   | `style` (`fade`, `slide`, `popin`, or `zoom`); `scale` (0.1-1.0, for `popin`)         | Window close, using a scene snapshot. The snapshot keeps its captured geometry above the live windows for its whole lifecycle. `popin` and `zoom` shrink it toward its centre while it fades, `slide` moves down and retains more opacity during that motion than `fade`. A card closed from overview uses this event independently. |
 | `[animation.windows_move]`  | None                                                                                  | Window move, resize, established-window layout reflow, maximize and restore, and floating maximize transitions, including visible scratchpad size actions.                     |
+| `[animation.focus_travel]`  | `lead` (0.0-1.0)                                                                      | Opt-in traveling focus ring for scrolling-layout navigation. When enabled, activating or directionally focusing a tiled window on the active workspace draws a compositor-owned ring that leads the shared `windows_move` pan and lands on the destination's border. Presentation only: keyboard focus, activation, and input behave exactly as when disabled. Uses the `windows_move` timeline; it accepts no `duration_ms`, `curve`, or `shader`. |
 | `[animation.workspaces]`    | None                                                                                  | Workspace switch.                                                                                                                                                              |
 | `[animation.overview]`      | `workspace_curve` (default `spring:1,1000`)                                           | Entering and leaving overview; `workspace_curve` moves the filmstrip between workspace previews. Closing a window card uses `windows_out`.                                     |
 | `[animation.scratchpad]`    | `dim` (0.0-1.0); `blur`; `scale` (0.0-1.0); `maximize`; `fullscreen`                  | Scratchpad show, hide, and backdrop.                                                                                                                                           |

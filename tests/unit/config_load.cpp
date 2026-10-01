@@ -1078,6 +1078,43 @@ UMBRIEL_TEST(durationBesideASpringCurveIsReportedAsInert) {
   CHECK_EQ(store.config().animation.workspaces.durationMs, 200);
 }
 
+UMBRIEL_TEST(focusTravelLoadsOptInDefaultsLeadBoundsAndBorrowedTimeline) {
+  const TempConfig file;
+  ConfigStore& store = umbriel::configStore();
+  store.setRootPath(file.path(), true);
+
+  // Defaults: off, moderate lead. The effect must stay invisible unless asked for.
+  file.write("");
+  CHECK(store.reload().success);
+  CHECK(!store.config().animation.focusTravel.enabled);
+  CHECK_EQ(store.config().animation.focusTravel.lead, 0.6);
+
+  file.write("[animation.focus_travel]\nenabled = true\nlead = 0.25\n");
+  CHECK(store.reload().success);
+  CHECK(store.config().animation.focusTravel.enabled);
+  CHECK_EQ(store.config().animation.focusTravel.lead, 0.25);
+
+  // Out-of-range lead clamps to the documented bounds, loudly.
+  file.write("[animation.focus_travel]\nenabled = true\nlead = 1.5\n");
+  CHECK(store.reload().success);
+  CHECK(containsDiagnostic(store, "animation.focus_travel.lead"));
+  CHECK_EQ(store.config().animation.focusTravel.lead, 1.0);
+  file.write("[animation.focus_travel]\nenabled = true\nlead = -0.5\n");
+  CHECK(store.reload().success);
+  CHECK(containsDiagnostic(store, "animation.focus_travel.lead"));
+  CHECK_EQ(store.config().animation.focusTravel.lead, 0.0);
+
+  // It borrows the windows_move timeline: timeline keys inside the section are unknown keys.
+  file.write("[animation.focus_travel]\nenabled = true\nduration_ms = 300\n");
+  CHECK(store.reload().success);
+  CHECK(containsDiagnostic(store, "unknown key animation.focus_travel.duration_ms"));
+  CHECK(store.config().animation.focusTravel.enabled);
+
+  file.write("[animation.focus_travel]\nenabled = true\nshader = \"reveal.glsl\"\n");
+  CHECK(store.reload().success);
+  CHECK(containsDiagnostic(store, "unknown key animation.focus_travel.shader"));
+}
+
 UMBRIEL_TEST(overviewWorkspaceWallpaperLoads) {
   const TempConfig file;
   ConfigStore& store = umbriel::configStore();

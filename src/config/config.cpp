@@ -1162,6 +1162,11 @@ namespace umbriel {
         section.boolean("enabled", animation.windowsMove.enabled);
         readTimeline(section, "animation.windows_move", animation.windowsMove.durationMs, animation.windowsMove.curve);
       });
+      // focus_travel deliberately has no duration_ms, curve, or shader of its own: it rides the windows_move timeline
+      // so the ring and the geometry it leads can never disagree about timing.
+      s.sub("focus_travel", [&](Section& section) {
+        section.boolean("enabled", animation.focusTravel.enabled).real("lead", 0.0, 1.0, animation.focusTravel.lead);
+      });
       s.sub("workspaces", [&](Section& section) {
         readShader(section, animation.workspaces);
         section.boolean("enabled", animation.workspaces.enabled);

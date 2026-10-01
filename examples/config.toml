@@ -733,6 +733,15 @@ enabled = true
 curve = "spring:1,4400"                         # 183 ms critically damped settle
 # shader = "shaders/squash.glsl"      # Subtle compression and settle during move/resize
 
+# Opt-in traveling focus ring for scrolling-layout navigation. Off by default.
+# When enabled, selecting a tiled window on the active workspace draws a
+# compositor-owned ring that leads the windows_move pan and lands on the
+# destination's border. Presentation only: focus and activation are unchanged.
+# Shares the windows_move timeline; no curve, duration, or shader of its own.
+[animation.focus_travel]
+enabled = false
+lead = 0.6                                      # How far the ring leads the pan, 0.0-1.0
+
 # Workspace switching
 [animation.workspaces]
 enabled = true

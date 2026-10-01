@@ -561,6 +561,17 @@ namespace umbriel {
         bool operator==(const WindowsMove&) const = default;
       } windowsMove;
 
+      // Opt-in traveling focus indicator for scrolling-layout navigation. Off by default: when enabled, selecting a
+      // tiled window on the active workspace draws a compositor-owned ring that leads the shared windows_move
+      // geometry pan toward the destination. It borrows the windows_move timeline (duration and curve), so it has no
+      // timeline fields of its own. This is presentation only; keyboard focus and activation behave exactly as before.
+      struct FocusTravel {
+        bool enabled = false;
+        // How far the ring may run ahead of the panning layout, 0.0-1.0. Zero keeps the ring locked to the camera.
+        double lead = 0.6;
+        bool operator==(const FocusTravel&) const = default;
+      } focusTravel;
+
       struct Workspaces {
         std::optional<AnimationShaderSource> shader;
         bool enabled = true;
