@@ -45,7 +45,8 @@ the sibling wave file in this directory was not read.
 Evidence basis: local checkout at `/home/rektide/archive/vicinaehq/vicinae`, commit
 `0827a2f8c` ("fix(xdg): stop reading a locale suffix at end of file (#1951)", just after
 `v0.28.2`). GitHub URLs below point at `main` and should match that commit. Claims are
-marked **[V]** (verified in source) or **[H]** (hypothesis/inference).
+marked **[V]** (verified in source), **[H]** (hypothesis/inference), or **[U]**
+(unverified — checked but inconclusive).
 
 ## 1. Architecture: one WM service, compiled providers, first-match detection
 
@@ -116,23 +117,29 @@ and [wayland.hpp](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/
   ([wm-extension.cpp L120](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/builtins/wm/wm-extension.cpp#L120)),
   and window rows show no workspace accessory
   ([switch-windows-model.cpp L17-21](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/builtins/wm/switch-windows-model.cpp#L17-L21)).
-  This is fine for v1 (windows-only) but matters for the deferred vertical-workspace phase:
-  cross-workspace selection would need either a compositor-specific provider (Niri-style) or
-  Umbriel-side orchestration **[H]**.
+  Selecting a **window that lives on another workspace already works** through the same
+  `activate` request — Umbriel resolves the target workspace itself, so cross-workspace
+  *window* selection needs nothing new **[V]**. What the protocol gap costs is workspace
+  *metadata*: workspace rows/chips in the picker, a workspace picker, workspace-scoped
+  filtering — those would need either a compositor-specific provider (Niri-style) or
+  Umbriel-side orchestration (see §7 Q2) **[V/H]**.
 - **`ext-foreign-toplevel-list` is NOT consumed anywhere in Vicinae** **[V]** (repo-wide
   grep finds only the wlr protocol). Umbriel's ext-foreign handles are invisible to Vicinae;
   only the wlr protocol matters. (The ext protocol is enumerate-only with no activate request,
   so this is not a loss for this use case.)
 - **List ordering**: `listWindowsSync()` returns `m_toplevels` in **compositor arrival order**
   (creation order), and neither the provider nor the built-in picker re-sorts
-  ([wayland.cpp L64](https://github.com/vicinaehq/vicinae/src/server/src/services/window-manager/wayland/wayland.cpp#L64);
+  ([wayland.cpp L64](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/services/window-manager/wayland/wayland.cpp#L64);
   `SwitchWindowsSection` does not override `sortFiltered()`). So under Umbriel the picker shows
   windows in map order, **not MRU** — unlike Niri (focus-timestamp sort) **[V]**. Worth noting
   as a picker-UX regression risk on Umbriel; fixing it needs either an Umbriel provider or a
   non-built-in picker (§5) **[H]**.
 - Window identity: `id()` is a pointer-to-QObject string, stable only for the provider's
-  lifetime of that handle; anything external correlating windows across time should key on
-  `app_id`/title instead **[V/H]**.
+  lifetime of that handle, and the exact handle lives inside Vicinae. External parties should
+  **not** correlate windows by `app_id`/title — unsafe and non-unique. An Umbriel-owned picker
+  (§5a) doesn't need Vicinae's identity at all: it generates the candidate list from
+  Umbriel's own window registry (native/ext IDs via its IPC) and maps the selection back
+  through that snapshot **[V]**.
 
 ## 3. The built-in find-window picker ("Switch Windows")
 
@@ -153,9 +160,10 @@ and [wayland.hpp](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/
    **`FocusWindowAction` added first** (hence primary), then optional Pin / Bring-to-workspace
    (capability-gated, absent on Umbriel), then Close (Ctrl+Q)
    ([switch-windows-model.cpp L23-36](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/builtins/wm/switch-windows-model.cpp#L23-L36)).
-4. `FocusWindowAction::execute` is two lines: `provider()->focusWindowSync(*m_window)` plus
-   `setAutoClose()` — autoClose makes the launcher dismiss itself right after issuing the
-   activate ([window-actions.hpp L8-23](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/actions/window-actions.hpp#L8-L23);
+4. `FocusWindowAction::execute` calls `provider()->focusWindowSync(*m_window)`; the action is
+   flagged autoClose at **construction** (`setAutoClose()` sits in the constructor, not
+   `execute`), so confirming the row makes the launcher dismiss itself via the dispatcher
+   after the action executes ([window-actions.hpp L11-22](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/actions/window-actions.hpp#L11-L22);
    [action-panel-model.cpp L178-200](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/ui/action-panel/action-panel-model.cpp#L178-L200)).
 
 **[V] There is no interception hook anywhere in this path.** No signal like
@@ -199,9 +207,13 @@ served by `ExtWindowManagementService` which resolves ids against the live provi
 calls `provider()->focusWindowSync` ([wm-service.hpp L16-22, L58-77](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/extension/api/wm-service.hpp#L16-L77)).
 Extensions render arbitrary React views (`List` with `onSelectionChange`, items, actions)
 ([components/list.tsx](https://github.com/vicinaehq/vicinae/blob/main/src/typescript/api/src/api/components/list.tsx)).
-There is **no `child_process`/exec surface** for extensions (repo grep; only `runInTerminal`
-and `open`, which are user-visible launches) — an extension cannot silently shell out to
-`umbriel` IPC; its only focus primitive is `focusWindow` (= wlr activate) **[V]**.
+The in-tree TS API exposes **no exec/process surface** (repo grep; only `runInTerminal` and
+`open`, both user-visible launches). Whether the extension runtime actually *blocks* Node
+built-ins such as `child_process`, or outbound network (which could reach a compositor-side
+listener), was **not verified** — the runtime is a downloaded Node archive and no sandbox
+allowlist was found in-tree, so external orchestration from an extension is
+**unsupported/unverified, not established impossible**. The only *documented* focus primitive
+is `focusWindow` (= wlr activate) **[V/U]**.
 
 ## 5. Answer to the key question: destination-before-activation mechanisms
 
@@ -227,8 +239,13 @@ hops, ramp — using internal state, with no Wayland round trip needed for ident
 plain-text rows only (icons only when an entry parses as an existing file path,
 [dmenu-model.cpp L72-79](https://github.com/vicinaehq/vicinae/blob/main/src/server/src/ui/views/dmenu-model.cpp#L72-L79)),
 no live window-add/remove events during the picker's lifetime, synchronous request/response
-(one dmenu at a time), and index→window mapping is entirely the caller's responsibility
-(indexes go stale if windows close while the picker is open — caller must re-validate) **[V/H]**.
+(one dmenu at a time), and index→window mapping is entirely the caller's responsibility.
+The mapping itself is stable: the snapshot backing one dmenu request is immutable for that
+request's lifetime, so the returned index is a valid lookup key even if a window closes
+mid-picker — look up the compositor-side ID from that snapshot, then **revalidate the stored
+compositor ID at selection time** (the window may be gone or moved); do not rebuild/reorder
+the candidate list before performing the lookup. Embedding a token in the row text is
+optional, not required **[V/H]**.
 
 ### 5b. Custom Vicinae extension command — rich picker, orchestration via sequential activates **[V]**
 
@@ -236,8 +253,9 @@ A TS extension can register its own window-switcher command: `getWindows()` to p
 `List`, `onSelectionChange`/item actions to run arbitrary code on selection, then choose what
 happens — e.g. a single `focusWindow(destination)`, or a timed sequence of
 `focusWindow(intermediate_i)` calls (each maps to one `activate(seat)` **[V]**), or nothing
-and just report. Constraints: extensions cannot exec processes (§4), so "orchestrate" means
-*via Vicinae's focus primitives only* — every step is a real focus change seen by Umbriel
+and just report. Constraints: the in-tree API has no exec surface and the runtime's actual
+restrictions are unverified (§4), so "orchestrate" means *via Vicinae's documented focus
+primitives* — every step is a real focus change seen by Umbriel
 (exactly the "acceptable as direct shortcut" intermediate-focus path), and timing/ramps still
 must be implemented Umbriel-side **[V/H]**. Upside over dmenu: app icons, subtitles, fuzzy
 weights, workspace chips (once Umbriel exposes workspaces through some provider), and the
@@ -262,25 +280,29 @@ picker stays the entry point, the earliest Umbriel can learn the destination is 
 - **Option B — Umbriel-driven picker via `vicinae dmenu --format index`.** Destination known
   pre-activation (§5a); Umbriel free to implement ring, hops, ramps, and (later) cross-
   workspace travel entirely internally; window list and ordering (e.g. MRU) controlled by
-  Umbriel. Costs: text-only rows, caller-owned index validity, one-shot request lifecycle.
+  Umbriel. Costs: text-only rows, revalidate the mapped compositor ID at selection (§5a),
+  one-shot request lifecycle.
   This is the only mechanism where *default activation never happens* unless Umbriel wills it
   **[V]**.
 - **Option C — replacement extension picker.** Best UX inside Vicinae (icons, fuzzy over
-  title/app/class); orchestration limited to sequential real focuses (§5b); cannot exec
-  Umbriel IPC; still needs a way to learn workspaces if the vertical phase lands (none exists
-  via wlr-foreign-toplevel) **[V/H]**.
+  title/app/class); orchestration limited to sequential real focuses (§5b); no documented
+  channel to Umbriel IPC (extension runtime restrictions unverified, §4); still needs a way
+  to learn workspace metadata if the vertical phase lands (none exists via
+  wlr-foreign-toplevel) **[V/U/H]**.
 - **Protocol ceiling:** `zwlr_foreign_toplevel_handle_v1.activate` carries only a seat; no
   ramp/duration/intent parameters exist in any Vicinae-relevant protocol, so **ramp
   algorithms and ring pacing must be configured and executed inside Umbriel** in every option
   **[V]**. Intermediate focus, if used, arrives as N separate activate requests whose pacing
   is controlled by the sender (extension loop or Umbriel itself) — Umbriel must decide
   per-request whether to animate fully, snap, or chain **[H]**.
-- **Sequencing note [V]:** after Enter, Vicinae issues the activate and *immediately* hides
-  (layer-shell autoClose). Any traveling ring will play over an already-bare desktop — i.e.
-  the ring must be an Umbriel overlay/focus-chrome effect, not something rendered by Vicinae.
-  Also `state_activated` events streaming back from Umbriel drive Vicinae's `focusChanged`;
-  rapid intermediate focuses would ripple into Vicinae's focus memory (harmless today — only
-  paste/snippet services consume it — but worth remembering) **[V/H]**.
+- **Sequencing note [V/H]:** after Enter, Vicinae sends the `activate` request and dismisses
+  itself (autoClose via the dispatcher). The activate and the layer-shell hide are **separate
+  Wayland requests**, so their arrival/ordering at the compositor is not guaranteed — Umbriel
+  must not assume the launcher surface is already gone when its scroll/ring animation starts.
+  Either way the ring must be an Umbriel overlay/focus-chrome effect, not something rendered
+  by Vicinae. Also `state_activated` events streaming back from Umbriel drive Vicinae's
+  `focusChanged`; rapid intermediate focuses would ripple into Vicinae's focus memory
+  (harmless today — only paste/snippet services consume it — but worth remembering).
 
 ## 7. Open questions
 
@@ -294,9 +316,10 @@ picker stays the entry point, the earliest Umbriel can learn the destination is 
    or a provider **[V/H]**.
 3. Is MRU ordering in the picker a requirement? If yes, Option B (Umbriel controls order) or a
    provider is needed; the built-in under generic Wayland is creation-ordered **[V]**.
-4. dmenu identity stability: how stale may the index be? If windows can close mid-picker,
-   Umbriel should key the selection by a stable token embedded in the row text rather than
-   index alone **[H]**.
+4. dmenu identity handling: the per-request snapshot makes the returned index a stable lookup
+   key; the follow-up obligation is revalidating the mapped compositor-side window ID at
+   selection time (window may have closed or moved meanwhile), not embedding extra tokens
+   **[V/H]**.
 
 ## Cross-references
 
