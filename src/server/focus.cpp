@@ -26,6 +26,8 @@ namespace umbriel {
       switch (reason) {
       case FocusReason::Directional:
         return "directional";
+      case FocusReason::Removal:
+        return "removal";
       case FocusReason::PointerPress:
         return "pointer-press";
       case FocusReason::PointerHover:
@@ -178,6 +180,7 @@ namespace umbriel {
     }
     switch (reason) {
     case FocusReason::Directional:
+    case FocusReason::Removal:
     case FocusReason::PointerPress:
     case FocusReason::PointerHover:
     case FocusReason::DragDrop:
