@@ -1,8 +1,10 @@
 #pragma once
 #include "config/config.h"
 #include "core/animation.h"
+#include "layout/focus_travel.h"
 #include "layout/layout.h"
 #include "layout/layout_motion.h"
+#include "server/focus.h"
 
 #include <array>
 #include <cstddef>
@@ -22,6 +24,7 @@ struct wlr_scene_tree;
 namespace umbriel {
 
   class DwindleLayout;
+  class FocusTravelRing;
   class MasterStackLayout;
   class Output;
   class ScrollingLayout;
@@ -202,6 +205,14 @@ namespace umbriel {
       return m_motion.progress.animating() || !m_motion.views.empty() || !m_motion.pendingOpenings.empty();
     }
 
+    // Leading-focus travel: request (start, retarget, or deliberately cancel) the opt-in traveling ring toward
+    // `view`, per [animation.focus_travel]. Call while `view`'s workspace focus change is still pending, so the
+    // visible origin is read before the reveal moves the strip. Selection semantics never change: this is
+    // presentation that borrows the shared layout motion, and it cancels rather than ever touching real focus.
+    void requestFocusTravel(View* view, FocusReason reason);
+    // Erase the ring and drop the whole travel state; safe to call repeatedly.
+    void cancelFocusTravel();
+
   private:
     // `resized` lists the members whose assigned size this arrange changed.
     void applyPositions(bool animate, std::span<View* const> resized);
@@ -230,6 +241,12 @@ namespace umbriel {
     // Snap or animate every tiled member of the layout into its slot from wherever it is presented now.
     void applyTiledMotion(const wlr_box& usable, bool animate, std::span<View* const> resized);
     void endLayoutMotion();
+    // Whether the traveling ring may keep running this tick: config on, not locked, no overview, destination still a
+    // mapped tile of this workspace. Revalidated every tick so drift (unmap, float, scratchpad, reload) cancels.
+    [[nodiscard]] bool focusTravelValid() const;
+    // The box the ring must stay inside: the usable area intersected with the strutted tiled area, so negative
+    // struts cannot promise visibility outside the output.
+    [[nodiscard]] std::optional<wlr_box> focusTravelViewport() const;
     // Reveal every pending opener once no geometry motion runs. True while some opener still waits.
     bool revealPendingOpenings();
     void syncCloseSnapshots();
@@ -282,11 +299,29 @@ namespace umbriel {
       std::vector<PendingOpening> pendingOpenings;
     };
     LayoutMotion m_motion;
+    // Leading-focus travel internals. Bind attaches a pending request to the motion this arrange just built; rebase
+    // retargets a running ring after an unrelated motion restart, refusing any journey that is not a pure strip
+    // translation; present draws the ring for one geometry tick. All three treat the presenter as borrowed state.
+    void bindFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove);
+    void rebaseFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove);
+    void presentFocusTravel(double progress);
     struct TrackedCloseSnapshot {
       CloseSnapshotId id = kInvalidCloseSnapshot;
       wlr_box canvas{};
     };
     std::vector<TrackedCloseSnapshot> m_trackedCloseSnapshots;
+    // Opt-in leading-focus travel ([animation.focus_travel]). The destination is a borrowed pointer kept valid by
+    // construction: detachFromLayout and every tick revalidation drop it, so no reference outlives a removed view.
+    struct FocusTravelState {
+      View* destination = nullptr;
+      FocusTravelPath path{};
+      // pending: a request recorded, waiting for the arrange that binds the journey's presented/final boxes.
+      // active: the journey is bound and the ring follows the running motion's monotonic geometry progress.
+      bool pending = false;
+      bool active = false;
+    };
+    FocusTravelState m_focusTravel;
+    std::unique_ptr<FocusTravelRing> m_focusTravelRing;
   };
 
   class WorkspaceGroup : public Animatable {

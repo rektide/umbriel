@@ -12,6 +12,7 @@
 #include "output/output.h"
 #include "overview/overview.h"
 #include "scene/animation_shader.h"
+#include "scene/focus_travel_ring.h"
 #include "server/server.h"
 #include "view/floating.h"
 #include "view/registry.h"
@@ -123,6 +124,8 @@ namespace umbriel {
   Workspace::~Workspace() {
     discardCloseSnapshots();
     endLayoutMotion();
+    // The ring's nodes hang under m_tree: destroy them (and drop the travel state) before the tree goes away.
+    m_focusTravelRing.reset();
     for (View* view : m_views) {
       view->cancelPositionAnimation();
       const bool fs = view->toplevel()->current.fullscreen || view->toplevel()->scheduled.fullscreen;
@@ -178,6 +181,10 @@ namespace umbriel {
     }
     m_active = active;
     wlr_ext_workspace_handle_v1_set_active(m_handle, active);
+    if (!active) {
+      // The workspace stops showing; a ring over hidden windows would outlive its journey.
+      cancelFocusTravel();
+    }
     applyVisibility();
     syncCloseSnapshots();
     if (active) {
@@ -544,6 +551,11 @@ namespace umbriel {
     if (scrolling != nullptr && shift != 0.0) {
       scrolling->setScroll(scrolling->scroll() - shift);
     }
+    // A destination that leaves the layout (unmap, float, move) ends its journey here, before any dangling pointer
+    // could survive the removal.
+    if (m_focusTravel.destination == view) {
+      cancelFocusTravel();
+    }
   }
 
   void Workspace::clampScrollToRange() {
@@ -838,6 +850,11 @@ namespace umbriel {
   void Workspace::applyTiledMotion(const wlr_box& usable, bool animate, std::span<View* const> resized) {
     const Overview* overview = m_group->server()->overview();
     const bool overviewActive = overview != nullptr && overview->active();
+    // The overview owns the screen while it runs; a traveling ring underneath it is presentation nobody can see or
+    // interrupt, so it never survives into it.
+    if (overviewActive) {
+      cancelFocusTravel();
+    }
 
     struct Member {
       View* view;
@@ -964,14 +981,22 @@ namespace umbriel {
     }
 
     // A running motion heading for the same layout keeps going; anything else restarts from the current boxes.
+    bool sameMotionContinues = false;
     if (m_motion.progress.animating() && views.size() == m_motion.views.size()) {
-      bool same = true;
-      for (size_t i = 0; i < views.size() && same; ++i) {
-        same = views[i].view == m_motion.views[i].view && sameBox(views[i].to, m_motion.views[i].to);
+      sameMotionContinues = true;
+      for (size_t i = 0; i < views.size() && sameMotionContinues; ++i) {
+        sameMotionContinues = views[i].view == m_motion.views[i].view && sameBox(views[i].to, m_motion.views[i].to);
       }
-      if (same) {
-        return;
-      }
+    }
+    // Travel binds to the motion this arrange built — including one it is about to keep unchanged. A running ring
+    // whose motion restarts either rebases onto a pure strip translation or cancels; it never rides arbitrary reflow.
+    if (m_focusTravel.pending) {
+      bindFocusTravel(views, animateMove);
+    } else if (m_focusTravel.active && !sameMotionContinues) {
+      rebaseFocusTravel(views, animateMove);
+    }
+    if (sameMotionContinues) {
+      return;
     }
     for (const LayoutMotion::ViewEntry& running : m_motion.views) {
       if (std::ranges::none_of(views, [&](const LayoutMotion::ViewEntry& entry) {
@@ -1039,6 +1064,10 @@ namespace umbriel {
         entry.view->presentTiledBox(interpolateBox(entry.from, entry.to, progress));
       }
     }
+    // The ring rides exactly this monotonic geometry progress; no clock of its own.
+    if (m_focusTravel.active) {
+      presentFocusTravel(progress);
+    }
     if (m_motion.progress.animating()) {
       return true;
     }
@@ -1052,6 +1081,9 @@ namespace umbriel {
         entry.view->endLayoutMotion();
       }
     }
+    // Natural completion: the ring finished on the destination's border, so hiding it is the handoff. The
+    // destination's own focused border is underneath at the same geometry.
+    cancelFocusTravel();
     return revealPendingOpenings();
   }
 
@@ -1082,6 +1114,239 @@ namespace umbriel {
     revealPendingOpenings();
     for (const LayoutMotion::ViewEntry& entry : views) {
       entry.view->endLayoutMotion();
+    }
+    // Whatever tore the motion down (non-animated arrange, reflow with no movers, layout switch, destruction), the
+    // ring has no timeline to borrow anymore.
+    cancelFocusTravel();
+  }
+
+  void Workspace::requestFocusTravel(View* view, FocusReason reason) {
+    const auto& animation = config().animation;
+    if (!animation.enabled || !animation.focusTravel.enabled) {
+      cancelFocusTravel();
+      return;
+    }
+    const bool initiate = reason == FocusReason::Directional
+        || reason == FocusReason::XdgActivation
+        || reason == FocusReason::ForeignActivation;
+    const bool traveling = m_focusTravel.active || m_focusTravel.pending;
+    if (traveling && m_focusTravel.destination == view) {
+      // Same-destination replay (a layer dismissal refocusing the already-selected window): keep traveling.
+      return;
+    }
+    // Any other focus change is an intentional move away from the journey, whatever its reason: a pointer press,
+    // a grab, a gesture, or a new selection. Retargeting starts from where the ring is visible right now.
+    wlr_box ringBox{};
+    const bool ringVisible = m_focusTravelRing != nullptr && m_focusTravelRing->visible();
+    if (ringVisible) {
+      ringBox = m_focusTravelRing->box();
+    }
+    cancelFocusTravel();
+    if (!initiate || view == nullptr) {
+      return;
+    }
+
+    Server* server = m_group != nullptr ? m_group->server() : nullptr;
+    const Overview* overview = server != nullptr ? server->overview() : nullptr;
+    if (!view->mapped()
+        || !view->tiled()
+        || view->layoutFullscreen()
+        || view->pinned()
+        || !view->onActiveWorkspace()
+        || m_layout->columnOf(view) < 0
+        || scrollingLayout() == nullptr
+        || !m_active
+        || m_inSwitchTransition
+        || server == nullptr
+        || server->sessionLocked()
+        || (overview != nullptr && overview->active())) {
+      return;
+    }
+
+    // The caller ran before the workspace focus change, so the previous focus is still the visible origin. A
+    // retarget continues from the ring itself.
+    FocusTravelPath path{
+        .origin = view->presentedBox(),
+        .destPresented = view->presentedBox(),
+        .destFinal = {},
+        .verticalStrip = scrollingVertical(),
+        .lead = animation.focusTravel.lead,
+    };
+    if (ringVisible) {
+      path.origin = ringBox;
+    } else if (View* previous = focusedView(); previous != nullptr
+               && previous != view
+               && previous->mapped()
+               && previous->presentedBox().width > 0
+               && previous->presentedBox().height > 0) {
+      path.origin = previous->presentedBox();
+    }
+    if (path.origin.width <= 0 || path.origin.height <= 0) {
+      return;
+    }
+    m_focusTravel.destination = view;
+    m_focusTravel.path = path;
+    m_focusTravel.pending = true;
+    m_focusTravel.active = false;
+  }
+
+  void Workspace::cancelFocusTravel() {
+    const bool wasVisible = m_focusTravelRing != nullptr && m_focusTravelRing->visible();
+    m_focusTravel = {};
+    if (m_focusTravelRing != nullptr) {
+      m_focusTravelRing->hideImmediate();
+    }
+    // Cancellation happens outside ticks too; the erase needs one scheduled frame.
+    if (wasVisible && m_group != nullptr && m_group->output() != nullptr) {
+      wlr_output_schedule_frame(m_group->output()->wlr());
+    }
+  }
+
+  void Workspace::bindFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove) {
+    m_focusTravel.pending = false;
+    if (!animateMove) {
+      // No borrowed timeline: ordinary presentation handles this selection.
+      cancelFocusTravel();
+      return;
+    }
+    const auto entry = std::ranges::find_if(views, [&](const LayoutMotion::ViewEntry& candidate) {
+      return candidate.view == m_focusTravel.destination;
+    });
+    if (entry == views.end()) {
+      // The destination is stable or absent: selection that scrolls nothing falls back to ordinary behavior.
+      cancelFocusTravel();
+      return;
+    }
+    m_focusTravel.path.destPresented = entry->from;
+    m_focusTravel.path.destFinal = entry->to;
+    m_focusTravel.path.verticalStrip = scrollingVertical();
+    m_focusTravel.path.lead = config().animation.focusTravel.lead;
+    // The journey is refused when its own endpoints cannot fit the viewport: the constraint would skip every frame.
+    const std::optional<wlr_box> viewport = focusTravelViewport();
+    const auto& appearance = config().appearance;
+    if (!viewport
+        || !constrainedFocusTravelBox(
+                m_focusTravel.path, 0.0, *viewport, appearance.borderWidth, appearance.outerBorderWidth
+        )
+                .has_value()
+        || !constrainedFocusTravelBox(
+                m_focusTravel.path, 1.0, *viewport, appearance.borderWidth, appearance.outerBorderWidth
+        )
+                .has_value()) {
+      cancelFocusTravel();
+      return;
+    }
+    if (m_focusTravelRing == nullptr) {
+      m_focusTravelRing = std::make_unique<FocusTravelRing>(m_tree);
+    }
+    m_focusTravel.active = true;
+  }
+
+  void Workspace::rebaseFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove) {
+    if (!animateMove) {
+      cancelFocusTravel();
+      return;
+    }
+    const auto entry = std::ranges::find_if(views, [&](const LayoutMotion::ViewEntry& candidate) {
+      return candidate.view == m_focusTravel.destination;
+    });
+    if (entry == views.end()) {
+      cancelFocusTravel();
+      return;
+    }
+    // Rebase only a pure strip translation: an unchanged size moving along the one scroll axis. Swaps, resizes, and
+    // arbitrary reflow get a cancellation instead of the translation math applied to geometry it does not describe.
+    const LayoutMotion::ViewEntry& destination = *entry;
+    const bool pureTranslation = destination.from.width == destination.to.width
+        && destination.from.height == destination.to.height
+        && (scrollingVertical() ? destination.from.x == destination.to.x : destination.from.y == destination.to.y);
+    if (!pureTranslation) {
+      cancelFocusTravel();
+      return;
+    }
+    wlr_box ringBox = m_focusTravel.path.origin;
+    if (m_focusTravelRing != nullptr && m_focusTravelRing->visible()) {
+      ringBox = m_focusTravelRing->box();
+    }
+    m_focusTravel.path.origin = ringBox;
+    m_focusTravel.path.destPresented = destination.from;
+    m_focusTravel.path.destFinal = destination.to;
+    m_focusTravel.path.verticalStrip = scrollingVertical();
+    m_focusTravel.path.lead = config().animation.focusTravel.lead;
+    const std::optional<wlr_box> viewport = focusTravelViewport();
+    const auto& appearance = config().appearance;
+    if (!viewport
+        || !constrainedFocusTravelBox(
+                m_focusTravel.path, 0.0, *viewport, appearance.borderWidth, appearance.outerBorderWidth
+        )
+                .has_value()
+        || !constrainedFocusTravelBox(
+                m_focusTravel.path, 1.0, *viewport, appearance.borderWidth, appearance.outerBorderWidth
+        )
+                .has_value()) {
+      cancelFocusTravel();
+    }
+  }
+
+  bool Workspace::focusTravelValid() const {
+    const auto& animation = config().animation;
+    if (!animation.enabled || !animation.focusTravel.enabled) {
+      return false;
+    }
+    Server* server = m_group != nullptr ? m_group->server() : nullptr;
+    if (server == nullptr || server->sessionLocked()) {
+      return false;
+    }
+    const Overview* overview = server->overview();
+    if (overview != nullptr && overview->active()) {
+      return false;
+    }
+    View* destination = m_focusTravel.destination;
+    return destination != nullptr
+        && destination->mapped()
+        && destination->tiled()
+        && !destination->layoutFullscreen()
+        && destination->workspace() == this
+        && m_layout->columnOf(destination) >= 0;
+  }
+
+  std::optional<wlr_box> Workspace::focusTravelViewport() const {
+    if (m_group == nullptr || m_group->output() == nullptr) {
+      return std::nullopt;
+    }
+    // Negative struts can push the tiled area outside the output; the ring may only promise visibility where the
+    // usable area and the tiled area actually overlap.
+    const wlr_box usable = usableArea();
+    const wlr_box tiled = tiledArea();
+    wlr_box intersection{};
+    if (!wlr_box_intersection(&intersection, &usable, &tiled)) {
+      return std::nullopt;
+    }
+    if (intersection.width <= 0 || intersection.height <= 0) {
+      return std::nullopt;
+    }
+    return intersection;
+  }
+
+  void Workspace::presentFocusTravel(double progress) {
+    if (!focusTravelValid()) {
+      cancelFocusTravel();
+      return;
+    }
+    const std::optional<wlr_box> viewport = focusTravelViewport();
+    const auto& appearance = config().appearance;
+    const std::optional<wlr_box> box = viewport
+        ? constrainedFocusTravelBox(
+              m_focusTravel.path, progress, *viewport, appearance.borderWidth, appearance.outerBorderWidth
+          )
+        : std::nullopt;
+    if (!box.has_value()) {
+      m_focusTravelRing->hideImmediate();
+      return;
+    }
+    m_focusTravelRing->present(*box);
+    if (m_group != nullptr && m_group->output() != nullptr) {
+      wlr_output_schedule_frame(m_group->output()->wlr());
     }
   }
 
