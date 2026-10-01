@@ -38,10 +38,11 @@ namespace umbriel {
   // render-margin pixel makeBorderRing reserves for fractional outer coverage. Zero when no stroke is drawn.
   [[nodiscard]] int focusTravelStrokeExtent(int innerWidth, int outerWidth);
 
-  // The ring's content box at camera progress, constrained so the ring together with its complete border stroke stays
-  // inside `viewport`. A box wider or taller than the viewport pins to the viewport's leading edge: mostly visible,
-  // never claimed fully contained. Nullopt when travel is undefined: a degenerate viewport, or a degenerate origin or
-  // final destination box (an eligible destination always has a positive final box).
+  // The ring's content box at camera progress, translated — never resized — so the ring together with its complete
+  // border stroke stays inside `viewport`, whatever distance the journey spans. Journeys whose origin or final
+  // destination cannot fit the viewport at all skip travel: the function returns nullopt rather than a clipped or
+  // repositioned box that claims an endpoint fidelity the geometry does not have. Nullopt as well for a degenerate
+  // viewport or a degenerate origin or final destination box.
   [[nodiscard]] std::optional<wlr_box> constrainedFocusTravelBox(
       const FocusTravelPath& path, double progress, const wlr_box& viewport, int innerWidth, int outerWidth
   );
