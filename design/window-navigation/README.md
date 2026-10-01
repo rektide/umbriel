@@ -10,6 +10,7 @@ Goal: selecting a window in Vicinae should smoothly travel to it with a configur
 - [Implementation groundwork](implementation0.glm53.md): geometry, opt-in configuration, and border presenter, with the runtime coordination design.
 - [Parent review checkpoint](checkpoint0.sol61.md): approved ownership shape, long-distance visibility correction, lifetime and coordinate constraints, and the next integration slice.
 - [Runtime review](review0.sol61.md): independent Standards and Spec findings plus parent analysis; records the correctness and rendered-verification gaps being corrected before a live trial.
+- [Recovery verification](implementation1.sol61.md): landed corrections, split frame-based checks, 62/62 Meson result, and the unresolved automatic replacement-retarget behavior after destination removal (10/11 focused harness checks pass).
 
 Vicinae's generic provider does not expose workspace metadata, but that does **not** prevent selecting a window on another workspace: activation identifies the window and Umbriel resolves its workspace. A separate workspace picker or richer labels would need additional integration. Keep exact compositor IDs for external orchestration; titles and app IDs are not unique window identities.
 
