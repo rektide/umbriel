@@ -1427,9 +1427,10 @@ namespace umbriel {
       }
     }
     // Travel binds to the motion this arrange built — including one it is about to keep unchanged. A running ring
-    // whose motion restarts either rebases onto a pure strip translation or cancels; it never rides arbitrary reflow.
+    // whose motion restarts either rebases onto a genuine common strip pan or cancels; it never rides arbitrary
+    // reflow.
     if (m_focusTravel.pending) {
-      bindFocusTravel(views, animateMove);
+      bindFocusTravel(views, animateMove, sameMotionContinues);
     } else if (m_focusTravel.active && !sameMotionContinues) {
       rebaseFocusTravel(views, animateMove);
     }
@@ -1679,8 +1680,19 @@ namespace umbriel {
         || reason == FocusReason::ForeignActivation;
     const bool traveling = m_focusTravel.active || m_focusTravel.pending;
     if (traveling && m_focusTravel.destination == view) {
-      // Same-destination replay (a layer dismissal refocusing the already-selected window): keep traveling.
-      return;
+      // The quiet replays keep the journey: startup refocus and drag-drop restore reselect the already-selected
+      // window (the asynchronous layer dismissal), and so does an explicit fresh selection. A real manual action on
+      // the same view is the user taking over and ends the journey even though the view is unchanged.
+      switch (reason) {
+      case FocusReason::Grab:
+      case FocusReason::PointerPress:
+      case FocusReason::PointerHover:
+      case FocusReason::Gesture:
+        cancelFocusTravel();
+        return;
+      default:
+        return;
+      }
     }
     // Any other focus change is an intentional move away from the journey, whatever its reason: a pointer press,
     // a grab, a gesture, or a new selection. Retargeting starts from where the ring is visible right now.
@@ -1750,13 +1762,35 @@ namespace umbriel {
     }
   }
 
-  void Workspace::bindFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove) {
-    m_focusTravel.pending = false;
+  bool Workspace::focusTravelJourneyAccepted(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove) {
     if (!animateMove) {
       // No borrowed timeline: ordinary presentation handles this selection.
-      cancelFocusTravel();
-      return;
+      return false;
     }
+    // The travel formula describes one common strip pan. A same-axis column swap keeps every member's size and
+    // axis and still fails the identical-delta test, so swaps, resizes, and rearrangements are refused here rather
+    // than fed to translation math that does not describe them. Bind and rebase apply the same gate.
+    std::vector<MotionBox> members;
+    members.reserve(views.size());
+    for (const LayoutMotion::ViewEntry& entry : views) {
+      members.push_back({.from = entry.from, .to = entry.to});
+    }
+    if (!isStripPan(members, scrollingVertical())) {
+      return false;
+    }
+    // Full endpoint identity: an endpoint that merely overlaps the viewport edge fits it but would draw translated,
+    // offset from the border the journey promises to meet.
+    const std::optional<wlr_box> viewport = focusTravelViewport();
+    return viewport.has_value()
+        && focusTravelEndpointsPreserved(
+               m_focusTravel.path, *viewport, config().appearance.borderWidth, config().appearance.outerBorderWidth
+        );
+  }
+
+  void Workspace::bindFocusTravel(
+      const std::vector<LayoutMotion::ViewEntry>& views, const bool animateMove, const bool sameMotionContinues
+  ) {
+    m_focusTravel.pending = false;
     const auto entry = std::ranges::find_if(views, [&](const LayoutMotion::ViewEntry& candidate) {
       return candidate.view == m_focusTravel.destination;
     });
@@ -1769,18 +1803,15 @@ namespace umbriel {
     m_focusTravel.path.destFinal = entry->to;
     m_focusTravel.path.verticalStrip = scrollingVertical();
     m_focusTravel.path.lead = config().animation.focusTravel.lead;
-    // The journey is refused when its own endpoints cannot fit the viewport: the constraint would skip every frame.
-    const std::optional<wlr_box> viewport = focusTravelViewport();
-    const auto& appearance = config().appearance;
-    if (!viewport
-        || !constrainedFocusTravelBox(
-                m_focusTravel.path, 0.0, *viewport, appearance.borderWidth, appearance.outerBorderWidth
-        )
-                .has_value()
-        || !constrainedFocusTravelBox(
-                m_focusTravel.path, 1.0, *viewport, appearance.borderWidth, appearance.outerBorderWidth
-        )
-                .has_value()) {
+    if (!focusTravelJourneyAccepted(views, animateMove)) {
+      cancelFocusTravel();
+      return;
+    }
+    // A journey bound onto a running motion with unchanged targets borrows its remaining progress; one that binds
+    // as the motion restarts starts at zero with it. Either way the ring begins where it is visible right now.
+    m_focusTravel.progressAtBind =
+        sameMotionContinues ? std::clamp(m_motion.geometryCurve.value(m_motion.progress.progress()), 0.0, 1.0) : 0.0;
+    if (m_focusTravel.progressAtBind >= 1.0) {
       cancelFocusTravel();
       return;
     }
@@ -1790,25 +1821,11 @@ namespace umbriel {
     m_focusTravel.active = true;
   }
 
-  void Workspace::rebaseFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove) {
-    if (!animateMove) {
-      cancelFocusTravel();
-      return;
-    }
+  void Workspace::rebaseFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, const bool animateMove) {
     const auto entry = std::ranges::find_if(views, [&](const LayoutMotion::ViewEntry& candidate) {
       return candidate.view == m_focusTravel.destination;
     });
     if (entry == views.end()) {
-      cancelFocusTravel();
-      return;
-    }
-    // Rebase only a pure strip translation: an unchanged size moving along the one scroll axis. Swaps, resizes, and
-    // arbitrary reflow get a cancellation instead of the translation math applied to geometry it does not describe.
-    const LayoutMotion::ViewEntry& destination = *entry;
-    const bool pureTranslation = destination.from.width == destination.to.width
-        && destination.from.height == destination.to.height
-        && (scrollingVertical() ? destination.from.x == destination.to.x : destination.from.y == destination.to.y);
-    if (!pureTranslation) {
       cancelFocusTravel();
       return;
     }
@@ -1817,23 +1834,16 @@ namespace umbriel {
       ringBox = m_focusTravelRing->box();
     }
     m_focusTravel.path.origin = ringBox;
-    m_focusTravel.path.destPresented = destination.from;
-    m_focusTravel.path.destFinal = destination.to;
+    m_focusTravel.path.destPresented = entry->from;
+    m_focusTravel.path.destFinal = entry->to;
     m_focusTravel.path.verticalStrip = scrollingVertical();
     m_focusTravel.path.lead = config().animation.focusTravel.lead;
-    const std::optional<wlr_box> viewport = focusTravelViewport();
-    const auto& appearance = config().appearance;
-    if (!viewport
-        || !constrainedFocusTravelBox(
-                m_focusTravel.path, 0.0, *viewport, appearance.borderWidth, appearance.outerBorderWidth
-        )
-                .has_value()
-        || !constrainedFocusTravelBox(
-                m_focusTravel.path, 1.0, *viewport, appearance.borderWidth, appearance.outerBorderWidth
-        )
-                .has_value()) {
+    if (!focusTravelJourneyAccepted(views, animateMove)) {
       cancelFocusTravel();
+      return;
     }
+    // The motion restarts from zero with a fresh full-duration curve; the ring's rebased journey rides it whole.
+    m_focusTravel.progressAtBind = 0.0;
   }
 
   bool Workspace::focusTravelValid() const {
@@ -1881,11 +1891,15 @@ namespace umbriel {
       cancelFocusTravel();
       return;
     }
+    // A journey bound onto a running motion presents the borrowed timeline's remaining fraction, so it starts where
+    // the ring is rather than leaping to the motion's global progress. Still one timeline, no second clock.
+    const double bound = std::clamp(m_focusTravel.progressAtBind, 0.0, 1.0);
+    const double journeyProgress = bound < 1.0 ? std::clamp((progress - bound) / (1.0 - bound), 0.0, 1.0) : 1.0;
     const std::optional<wlr_box> viewport = focusTravelViewport();
     const auto& appearance = config().appearance;
     const std::optional<wlr_box> box = viewport
         ? constrainedFocusTravelBox(
-              m_focusTravel.path, progress, *viewport, appearance.borderWidth, appearance.outerBorderWidth
+              m_focusTravel.path, journeyProgress, *viewport, appearance.borderWidth, appearance.outerBorderWidth
           )
         : std::nullopt;
     if (!box.has_value()) {

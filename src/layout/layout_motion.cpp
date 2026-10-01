@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <span>
 
 namespace umbriel {
 
@@ -41,6 +42,30 @@ namespace umbriel {
         || (leftOf(b.from, a.from) && leftOf(b.to, a.to))
         || (above(a.from, b.from) && above(a.to, b.to))
         || (above(b.from, a.from) && above(b.to, a.to));
+  }
+
+  bool isStripPan(const std::span<const MotionBox> members, const bool verticalStrip) {
+    if (members.empty()) {
+      return false;
+    }
+    const MotionBox& first = members.front();
+    if (first.from.width != first.to.width || first.from.height != first.to.height) {
+      return false;
+    }
+    const int delta = verticalStrip ? first.to.y - first.from.y : first.to.x - first.from.x;
+    for (const MotionBox& member : members) {
+      if (member.from.width != member.to.width || member.from.height != member.to.height) {
+        return false;
+      }
+      if (verticalStrip ? member.from.x != member.to.x : member.from.y != member.to.y) {
+        return false;
+      }
+      const int memberDelta = verticalStrip ? member.to.y - member.from.y : member.to.x - member.from.x;
+      if (memberDelta != delta) {
+        return false;
+      }
+    }
+    return true;
   }
 
 } // namespace umbriel

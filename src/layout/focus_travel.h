@@ -47,4 +47,11 @@ namespace umbriel {
       const FocusTravelPath& path, double progress, const wlr_box& viewport, int innerWidth, int outerWidth
   );
 
+  // Whether the journey's natural endpoints survive constraining exactly: the ring leaves the origin's box and meets
+  // the destination's final box without translation. An endpoint that merely overlaps the viewport edge fits the
+  // viewport but would draw shifted, offset from the border the journey promises to meet, so callers refuse the
+  // journey rather than claim an exact handoff.
+  [[nodiscard]] bool
+  focusTravelEndpointsPreserved(const FocusTravelPath& path, const wlr_box& viewport, int innerWidth, int outerWidth);
+
 } // namespace umbriel

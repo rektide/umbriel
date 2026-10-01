@@ -350,4 +350,47 @@ UMBRIEL_TEST(focusTravelStrokeExtentHandlesZeroWidths) {
   CHECK_EQ(focusTravelStrokeExtent(0, 3), 4);
 }
 
+UMBRIEL_TEST(focusTravelEndpointsPreservedRequiresExactEndpointIdentity) {
+  using umbriel::constrainedFocusTravelBox;
+  using umbriel::focusTravelEndpointsPreserved;
+  const wlr_box viewport{0, 0, 1000, 700};
+  const FocusTravelPath inside{
+      .origin = wlr_box{28, 50, 340, 500},
+      .destPresented = wlr_box{30000, 50, 340, 500},
+      .destFinal = wlr_box{330, 50, 340, 500},
+      .verticalStrip = false,
+      .lead = 0.6,
+  };
+  CHECK(focusTravelEndpointsPreserved(inside, viewport, 2, 2));
+
+  // The destination's final box fits the viewport but overlaps its right edge: the constraint translates it, so
+  // the journey must be refused rather than hide the ring offset from the border it promises to meet.
+  FocusTravelPath edgeOverlap = inside;
+  edgeOverlap.destFinal = wlr_box{900, 50, 340, 500};
+  const std::optional<wlr_box> constrainedEnd = constrainedFocusTravelBox(edgeOverlap, 1.0, viewport, 2, 2);
+  CHECK(constrainedEnd.has_value());
+  if (constrainedEnd) {
+    CHECK(constrainedEnd->x != edgeOverlap.destFinal.x); // translated, despite fitting dimensions
+  }
+  CHECK(!focusTravelEndpointsPreserved(edgeOverlap, viewport, 2, 2));
+
+  // Same for an origin that overlaps the left edge.
+  FocusTravelPath edgeOrigin = inside;
+  edgeOrigin.origin = wlr_box{-100, 50, 340, 500};
+  CHECK(!focusTravelEndpointsPreserved(edgeOrigin, viewport, 2, 2));
+
+  // Stroke margins count: a box whose stroke, not content, crosses the edge is translated too.
+  FocusTravelPath strokeOverlap = inside;
+  strokeOverlap.destFinal = wlr_box{660, 50, 340, 500}; // content fits exactly; the stroke crosses
+  CHECK(!focusTravelEndpointsPreserved(strokeOverlap, viewport, 2, 2));
+
+  // Oversized or degenerate endpoints refuse as well.
+  FocusTravelPath oversized = inside;
+  oversized.destFinal = wlr_box{100, 50, 1200, 500};
+  CHECK(!focusTravelEndpointsPreserved(oversized, viewport, 2, 2));
+  FocusTravelPath degenerate = inside;
+  degenerate.origin = wlr_box{28, 50, 0, 500};
+  CHECK(!focusTravelEndpointsPreserved(degenerate, viewport, 2, 2));
+}
+
 int main() { return RUN_TESTS(); }
