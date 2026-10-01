@@ -11,6 +11,7 @@ Goal: selecting a window in Vicinae should smoothly travel to it with a configur
 - [Parent review checkpoint](checkpoint0.sol61.md): approved ownership shape, long-distance visibility correction, lifetime and coordinate constraints, and the next integration slice.
 - [Runtime review](review0.sol61.md): independent Standards and Spec findings plus parent analysis; records the correctness and rendered-verification gaps being corrected before a live trial.
 - [Recovery evidence](implementation1.sol61.md): the runtime review fixes and split rendered checks; records a remaining destination-removal policy regression and distinguishes tested behavior from source-only claims.
+- [Passing removal-policy checkpoint](implementation2.sol61.md): resolves that regression without changing normal replacement focus/reveal; all 11 focused travel checks, four neighboring close/layout checks, and the 62-test Meson suite pass.
 - [Recovery verification](implementation1.sol61.md): landed corrections, split frame-based checks, 62/62 Meson result, and the unresolved automatic replacement-retarget behavior after destination removal (10/11 focused harness checks pass).
 
 Vicinae's generic provider does not expose workspace metadata, but that does **not** prevent selecting a window on another workspace: activation identifies the window and Umbriel resolves its workspace. A separate workspace picker or richer labels would need additional integration. Keep exact compositor IDs for external orchestration; titles and app IDs are not unique window identities.
@@ -35,4 +36,18 @@ Known tradeoff: ordinary window moves/resizes/reflows use that same ramp. No lea
 
 ## Implementation recovery checkpoint
 
-The initial runtime patch and screenshot evidence are committed, but [runtime review](review0.sol61.md) requires further correctness and coverage fixes before a live trial. The implementation agent reached its provider usage limit during those revisions, after committing through `80f023a2` and drafting three replacement checks (`221_focus_travel_journey.sh`, `222_focus_travel_retarget.sh`, `223_focus_travel_seat.sh`). A replacement agent is preserving the drafts before completing them and reconciling the review requirements against the actual committed code. Do not treat those drafts or the earlier passing check as proof that the full revised behavior is ready. Smooth-scrolling configuration remains applied; the patched compositor remains uninstalled.
+At this historical checkpoint, the initial runtime patch and screenshot evidence were committed, but [runtime review](review0.sol61.md) required further correctness and coverage fixes before a live trial. The implementation agent reached its provider usage limit during those revisions, after committing through `80f023a2` and drafting three replacement checks (`221_focus_travel_journey.sh`, `222_focus_travel_retarget.sh`, `223_focus_travel_seat.sh`). A replacement agent preserved the drafts before completing them and reconciling the review requirements against the actual committed code. Those drafts and the earlier passing check alone did not prove readiness. Smooth-scrolling configuration remained applied; the patched compositor remained uninstalled.
+
+## Current trial readiness
+
+The recovery and review fixes are now committed. Source `767cb305` distinguishes automatic focused-view removal from intentional navigation: replacement keyboard focus and scrolling remain normal, but the visual ring cancels instead of redirecting to an unrequested survivor. Parent reviewed the final source delta and the corrected ownership, common-pan/endpoint acceptance, focus-replay and bound-progress paths. [The final verification checkpoint](implementation2.sol61.md) reports all 15 targeted rendered checks (11 travel plus four neighbors) and all 62 Meson tests passing. Historical red evidence above is preserved deliberately and is no longer the current result.
+
+The first ring slice is ready for an **opt-in human visual trial**, not declared accepted upstream. It remains disabled by default and no patched compositor is installed. In a patched build, enable:
+
+```toml
+[animation.focus_travel]
+enabled = true
+lead = 0.6
+```
+
+It borrows `windows_move` curve/duration and only starts for supported same-workspace scrolling pans. It is a supplementary ring, so the destination's normal focus accent may briefly coexist near handoff. Cross-workspace/output travel, oversized or edge-incompatible endpoints, and focus-only selections without a pan retain ordinary behavior. Gesture cancellation has source review rather than a synthetic runtime gesture check. Human judgment of pacing, edge-dwelling, and the duplicate-accent tradeoff is still outstanding; a nested compositor trial is the safe next step before replacing a live session.
