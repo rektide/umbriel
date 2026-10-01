@@ -59,6 +59,20 @@ namespace umbriel {
     if (!seatTarget->acceptsKeyboardFocus()) {
       return;
     }
+    // The previously effective selection, captured before anything here mutates focus. The seat's surface is the
+    // honest answer whenever a view holds the keyboard; when a layer holds it (a picker that is still up) or the
+    // seat is empty, the registry's recency order is the effective selection memory. Leading-focus travel reads
+    // this to end journeys on the workspace selection moved away from, including across outputs.
+    View* previousSelection = View::fromSurface(m_server.seat()->wlr()->keyboard_state.focused_surface);
+    if (previousSelection == nullptr) {
+      for (const auto& entry : m_server.registry().all()) {
+        if (entry->mapped()) {
+          previousSelection = entry.get();
+          break;
+        }
+      }
+    }
+
     // PointerHover gate: reject focus entirely when revealing would exceed the configured max scroll fraction. Must run
     // before any side effects (MRU, seat focus) so an over-limit hover focuses nothing.
     if (reason == FocusReason::PointerHover && view->tiled()) {
@@ -123,14 +137,18 @@ namespace umbriel {
     }
     Workspace* workspace = view->workspace();
     if (workspace != nullptr) {
-      // Focus moving to another workspace ends the old workspace's traveling ring even when that workspace stays
-      // active (cross-output focus). A layer-held seat reads as no view here, so picker-driven selection keeps its
-      // ring. The request runs before setFocusedView so the visible origin is still the previous focus.
-      if (View* seatFocused = View::fromSurface(m_server.seat()->wlr()->keyboard_state.focused_surface);
-          seatFocused != nullptr && seatFocused->workspace() != nullptr && seatFocused->workspace() != workspace) {
-        seatFocused->workspace()->cancelFocusTravel();
+      // Navigation from another workspace (including another output, which deactivates nothing) ends the old
+      // workspace's journey and starts none here: the reveal is real, but a ring launched from a stale local focus
+      // would present a same-workspace selection that never happened. A ring already running on the target
+      // workspace belongs to its previous selection context and ends with it. Same-workspace navigation keeps the
+      // full request path. This runs before setFocusedView so the visible origin is still the previous focus.
+      Workspace* previousWorkspace = previousSelection != nullptr ? previousSelection->workspace() : nullptr;
+      if (previousWorkspace != nullptr && previousWorkspace != workspace) {
+        previousWorkspace->cancelFocusTravel();
+        workspace->cancelFocusTravel();
+      } else {
+        workspace->requestFocusTravel(view, reason);
       }
-      workspace->requestFocusTravel(view, reason);
       if (!view->pinned() || workspace->active()) {
         workspace->setFocusedView(view, raise, reason != FocusReason::PointerHover);
       }
