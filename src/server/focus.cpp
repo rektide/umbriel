@@ -122,8 +122,18 @@ namespace umbriel {
       seatTarget->applySeatFocus(!overviewActive, raise);
     }
     Workspace* workspace = view->workspace();
-    if (workspace != nullptr && (!view->pinned() || workspace->active())) {
-      workspace->setFocusedView(view, raise, reason != FocusReason::PointerHover);
+    if (workspace != nullptr) {
+      // Focus moving to another workspace ends the old workspace's traveling ring even when that workspace stays
+      // active (cross-output focus). A layer-held seat reads as no view here, so picker-driven selection keeps its
+      // ring. The request runs before setFocusedView so the visible origin is still the previous focus.
+      if (View* seatFocused = View::fromSurface(m_server.seat()->wlr()->keyboard_state.focused_surface);
+          seatFocused != nullptr && seatFocused->workspace() != nullptr && seatFocused->workspace() != workspace) {
+        seatFocused->workspace()->cancelFocusTravel();
+      }
+      workspace->requestFocusTravel(view, reason);
+      if (!view->pinned() || workspace->active()) {
+        workspace->setFocusedView(view, raise, reason != FocusReason::PointerHover);
+      }
     }
     m_server.refreshOutputPolicies();
     if (overviewActive) {
