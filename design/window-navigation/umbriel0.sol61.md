@@ -120,3 +120,15 @@ No compositor code or user configuration has been changed, and no visual/runtime
 The user prefers a **traveling visual focus ring**. Actual focus passing through intermediate windows is somewhat anti-desired, but acceptable as a direct implementation shortcut: move focus along the path from origin to destination. Do not reinterpret that tolerance as a requirement to activate intermediate apps, or reject it outright if a cheap experiment would clarify the visual effect.
 
 Multiple vertically arranged workspaces can be left out of the first exploration, but eventual support is explicitly desired. Initial scope can be a single scrolling workspace; preserve the distinction between strip travel and workspace-axis travel so the latter can be added deliberately. No implementation has been requested by this clarification.
+
+## External stepping as a tolerated experiment
+
+An outside controller could enumerate the strip and issue existing `window-focus:<id>` actions for intermediate windows before the destination. That requires no new compositor API, but ordinary activation of the destination must not already have completed before the controller takes over. Picker interception is therefore a separate integration question.
+
+This tests the tolerated focus-stepping interpretation, not a continuously traveling independent ring. Existing borders change color in place, and repeated selections retarget shared geometry motion. Intermediate activations also update MRU and dynamic focus rules, and cursor-follow-focus can warp to each final logical target before it visually arrives ([`View::setBorderFocused`](https://github.com/noctalia-dev/umbriel/blob/51e6528e/src/view/view.cpp#L1934-L1966), [`Cursor::warpToView`](https://github.com/noctalia-dev/umbriel/blob/51e6528e/src/input/cursor.cpp#L689-L725)). Timing many IPC actions is not equivalent to owning one compositor-frame travel timeline.
+
+## Upstream constraints discovered in the doc-pass
+
+[Umbriel's scope policy](/SCOPE.md) explicitly excludes plugins/embedded scripting and visuals that bypass `umbrielfx`. It prefers existing-layout refinement, existing-state IPC, and clients/scripts for anything they can already accomplish. A navigation refinement is a plausible discussion, not evidence that maintainers would accept a new effect. If developed upstream, render the traveling indicator through `umbrielfx` and keep navigation policy separate from focus/rendering mechanisms ([contributor principles](/CONTRIBUTING.md#design-principles)).
+
+The policy asks that ideas be discussed with maintainers before invasive work. Configurable smooth travel already reachable through configuration should not itself become a redundant feature request. Independent navigation timing and a compositor-synchronized traveling ring are the distinct candidate gaps to discuss.
