@@ -16,7 +16,8 @@ namespace umbriel {
   // reveal would shift the grab offsets under the pointer), and a hover has a configurable limit on how far it may
   // scroll before it declines to focus at all.
   enum class FocusReason : uint8_t {
-    Directional,  // window-focus-* keybinds, focus-adjacent after close
+    Directional,  // intentional window-focus-* navigation
+    Removal,      // automatic replacement when the focused view unmaps
     PointerPress, // plain click-to-focus
     PointerHover, // follows_mouse enter
     Grab,         // Mod+drag / Mod+resize start

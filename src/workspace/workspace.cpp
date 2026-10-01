@@ -1134,12 +1134,14 @@ namespace umbriel {
     if (traveling && m_focusTravel.destination == view) {
       // The quiet replays keep the journey: startup refocus and drag-drop restore reselect the already-selected
       // window (the asynchronous layer dismissal), and so does an explicit fresh selection. A real manual action on
-      // the same view is the user taking over and ends the journey even though the view is unchanged.
+      // the same view is the user taking over and ends the journey even though the view is unchanged. Automatic
+      // removal focus ends it too: the requested destination disappeared, rather than authorizing another journey.
       switch (reason) {
       case FocusReason::Grab:
       case FocusReason::PointerPress:
       case FocusReason::PointerHover:
       case FocusReason::Gesture:
+      case FocusReason::Removal:
         cancelFocusTravel();
         return;
       default:
