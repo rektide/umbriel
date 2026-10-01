@@ -48,6 +48,13 @@ namespace umbriel {
         ),
         appearance.borderWidth, appearance.outerBorderWidth
     );
+    // Colors are refreshed every present, not only at node creation: a theme change between journeys must not
+    // resurrect a stale ring, and the ring always draws what a real focused border would draw.
+    float innerColor[4];
+    float outerColor[4];
+    premultiplied(innerColor, config().colors.border.focused, 1.0F);
+    premultiplied(outerColor, config().colors.border.outer, 1.0F);
+    wlr_scene_border_set_colors(m_border, innerColor, outerColor);
     // applyBorderGeometry positions the border relative to the content origin: the ring's render margin hangs
     // outside contentBox, matching how view borders wrap their windows.
     wlr_scene_node_set_position(&m_tree->node, contentBox.x, contentBox.y);

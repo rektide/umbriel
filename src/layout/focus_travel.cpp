@@ -70,36 +70,20 @@ namespace umbriel {
 
     const int stroke = focusTravelStrokeExtent(innerWidth, outerWidth);
     const wlr_box raw = focusTravelBox(path, progress);
-    const int left = raw.x - stroke;
-    const int top = raw.y - stroke;
-    const int right = raw.x + raw.width + stroke;
-    const int bottom = raw.y + raw.height + stroke;
-
-    // Squeeze against the edges so the complete stroke stays visible; a box that cannot fit pins to the leading edge,
-    // which keeps most of it onscreen without pretending the ring is contained.
-    int constrainedLeft = std::clamp(left, viewport.x, viewport.x + viewport.width);
-    int constrainedRight = std::clamp(right, viewport.x, viewport.x + viewport.width);
-    int constrainedTop = std::clamp(top, viewport.y, viewport.y + viewport.height);
-    int constrainedBottom = std::clamp(bottom, viewport.y, viewport.y + viewport.height);
-    if (right - left > viewport.width) {
-      constrainedLeft = viewport.x;
-      constrainedRight = constrainedLeft + (right - left);
-    }
-    if (bottom - top > viewport.height) {
-      constrainedTop = viewport.y;
-      constrainedBottom = constrainedTop + (bottom - top);
-    }
-
-    const wlr_box constrained{
-        constrainedLeft + stroke,
-        constrainedTop + stroke,
-        std::max(0, constrainedRight - constrainedLeft - 2 * stroke),
-        std::max(0, constrainedBottom - constrainedTop - 2 * stroke),
-    };
-    if (constrained.width <= 0 || constrained.height <= 0) {
+    const int expandedWidth = raw.width + 2 * stroke;
+    const int expandedHeight = raw.height + 2 * stroke;
+    // Explicit skip: a ring that cannot fit the viewport on an axis has no honest containment, so travel is refused
+    // rather than clipped or pinned to an edge. Interpolated sizes stay between the endpoint sizes, so a journey
+    // rejected here is rejected at its endpoints too — callers gate the journey once at bind time the same way.
+    if (expandedWidth > viewport.width || expandedHeight > viewport.height) {
       return std::nullopt;
     }
-    return constrained;
+
+    // Translate, never resize: the whole stroke moves inside the viewport while the ring keeps the exact box the
+    // geometry asked for, including across arbitrarily long journeys whose raw box lands far outside.
+    const int left = std::clamp(raw.x - stroke, viewport.x, viewport.x + viewport.width - expandedWidth);
+    const int top = std::clamp(raw.y - stroke, viewport.y, viewport.y + viewport.height - expandedHeight);
+    return wlr_box{left + stroke, top + stroke, raw.width, raw.height};
   }
 
 } // namespace umbriel

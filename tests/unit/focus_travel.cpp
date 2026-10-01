@@ -22,8 +22,6 @@ namespace {
 
   double centerX(const wlr_box& box) { return box.x + box.width / 2.0; }
 
-  double centerY(const wlr_box& box) { return box.y + box.height / 2.0; }
-
   // Ring plus stroke footprint, as the constraint defines it.
   struct Footprint {
     int x;
@@ -115,66 +113,175 @@ UMBRIEL_TEST(focusTravelLeadDrivesStripPositionAheadOfCameraAndBackToFinal) {
   }
 }
 
-UMBRIEL_TEST(constrainedFocusTravelStaysInsideViewportThroughLongHorizontalJump) {
-  const FocusTravelPath path = horizontalJourney(0.6);
+UMBRIEL_TEST(constrainedFocusTravelStaysVisibleThroughArbitrarilyLongJumpRight) {
+  // The parent review's failing case: a short camera journey whose destination is presented absurdly far right.
+  // The raw ring leaves the viewport entirely; the constraint must still return a visible, dimension-preserving box.
+  const FocusTravelPath path{
+      .origin = wlr_box{28, 50, 340, 500},
+      .destPresented = wlr_box{30000, 50, 340, 500},
+      .destFinal = wlr_box{330, 50, 340, 500},
+      .verticalStrip = false,
+      .lead = 0.6,
+  };
+  const wlr_box viewport{0, 0, 1000, 700};
   const int stroke = focusTravelStrokeExtent(2, 2);
-  CHECK_EQ(stroke, 5); // 2 + 2 border widths plus the one render margin pixel
-
-  double previousCenter = centerX(kVisibleOrigin);
   for (int step = 0; step <= 40; ++step) {
     const double progress = step / 40.0;
-    const std::optional<wlr_box> box = constrainedFocusTravelBox(path, progress, kViewport, 2, 2);
+    const wlr_box raw = focusTravelBox(path, progress);
+    const std::optional<wlr_box> box = constrainedFocusTravelBox(path, progress, viewport, 2, 2);
     CHECK(box.has_value());
     if (!box) {
       continue;
     }
+    // Dimensions are preserved exactly; only the position translates.
+    CHECK_EQ(box->width, raw.width);
+    CHECK_EQ(box->height, raw.height);
     const Footprint drawn = footprint(*box, stroke);
-    CHECK(drawn.x >= kViewport.x);
-    CHECK(drawn.y >= kViewport.y);
-    CHECK(drawn.x + drawn.width <= kViewport.x + kViewport.width);
-    CHECK(drawn.y + drawn.height <= kViewport.y + kViewport.height);
-    // Correct direction: early flight advances toward the destination, and the whole path never falls back left of
-    // the segment between origin and final centres (the tail retreats only toward the final handoff).
-    if (progress <= 0.5) {
-      CHECK(centerX(*box) + 1e-6 >= previousCenter - 1e-6);
-    }
-    CHECK(centerX(*box) + 1e-6 >= std::min(centerX(kVisibleOrigin), centerX(kFarRightFinal)) - 1.0);
-    previousCenter = centerX(*box);
-    if (progress > 0.0 && progress < 0.5) {
-      // A destination presented far right projects the ring onto the destination-facing edge early.
-      CHECK(centerX(*box) > centerX(kVisibleOrigin));
-    }
+    CHECK(drawn.x >= viewport.x);
+    CHECK(drawn.y >= viewport.y);
+    CHECK(drawn.x + drawn.width <= viewport.x + viewport.width);
+    CHECK(drawn.y + drawn.height <= viewport.y + viewport.height);
   }
-  // The supported endpoints survive constraining unchanged: both are fully inside this viewport.
-  const std::optional<wlr_box> start = constrainedFocusTravelBox(path, 0.0, kViewport, 2, 2);
-  const std::optional<wlr_box> end = constrainedFocusTravelBox(path, 1.0, kViewport, 2, 2);
+  // Mid-flight the raw box is entirely offscreen right, yet the ring rides just inside the destination-facing edge.
+  const wlr_box rawMid = focusTravelBox(path, 0.5);
+  CHECK(rawMid.x > viewport.x + viewport.width);
+  const std::optional<wlr_box> mid = constrainedFocusTravelBox(path, 0.5, viewport, 2, 2);
+  CHECK(mid.has_value());
+  if (mid) {
+    CHECK_EQ(mid->x + mid->width + stroke, viewport.x + viewport.width);
+    CHECK(centerX(*mid) > centerX(path.origin));
+  }
+  // Endpoints stay exact: both fit the viewport, so constraining changes nothing.
+  const std::optional<wlr_box> start = constrainedFocusTravelBox(path, 0.0, viewport, 2, 2);
+  const std::optional<wlr_box> end = constrainedFocusTravelBox(path, 1.0, viewport, 2, 2);
   CHECK(start.has_value() && end.has_value());
   if (start && end) {
-    CHECK(sameBox(*start, kVisibleOrigin));
-    CHECK(sameBox(*end, kFarRightFinal));
+    CHECK(sameBox(*start, path.origin));
+    CHECK(sameBox(*end, path.destFinal));
   }
 }
 
-UMBRIEL_TEST(constrainedFocusTravelHandlesLongJumpUpward) {
+UMBRIEL_TEST(constrainedFocusTravelStaysVisibleThroughArbitrarilyLongJumpLeftWithNegativePresented) {
+  // Journey direction leftward; the destination was presented far offscreen into negative coordinates.
   const FocusTravelPath path{
-      .origin = wlr_box{2100, 1600, 800, 600},
-      .destPresented = wlr_box{2200, 4200, 700, 500},
-      .destFinal = wlr_box{2200, 1400, 700, 500},
+      .origin = wlr_box{1720, 50, 340, 500},
+      .destPresented = wlr_box{-40000, 50, 340, 500},
+      .destFinal = wlr_box{40, 50, 340, 500},
+      .verticalStrip = false,
+      .lead = 1.0,
+  };
+  const wlr_box viewport{0, 0, 2000, 700};
+  for (int step = 0; step <= 40; ++step) {
+    const double progress = step / 40.0;
+    const wlr_box raw = focusTravelBox(path, progress);
+    const std::optional<wlr_box> box = constrainedFocusTravelBox(path, progress, viewport, 2, 2);
+    CHECK(box.has_value());
+    if (!box) {
+      continue;
+    }
+    CHECK_EQ(box->width, raw.width);
+    CHECK_EQ(box->height, raw.height);
+    const Footprint drawn = footprint(*box, focusTravelStrokeExtent(2, 2));
+    CHECK(drawn.x >= viewport.x);
+    CHECK(drawn.x + drawn.width <= viewport.x + viewport.width);
+    CHECK(drawn.y >= viewport.y);
+    CHECK(drawn.y + drawn.height <= viewport.y + viewport.height);
+    if (progress > 0.0 && progress <= 0.5) {
+      CHECK(centerX(*box) - 1e-6 <= centerX(path.origin) + 1e-6); // moving left early
+    }
+    CHECK(centerX(*box) + 1e-6 <= std::max(centerX(path.origin), centerX(path.destFinal)) + 1.0);
+  }
+  const std::optional<wlr_box> mid = constrainedFocusTravelBox(path, 0.5, viewport, 2, 2);
+  CHECK(mid.has_value());
+  if (mid) {
+    // Riding the destination-facing (left) edge: the ring hugs x = viewport left + stroke.
+    CHECK_EQ(mid->x, viewport.x + focusTravelStrokeExtent(2, 2));
+  }
+}
+
+UMBRIEL_TEST(constrainedFocusTravelStaysVisibleThroughLongJourneyDownward) {
+  // Vertical strip, journey direction downward, destination presented far below (large positive coordinates).
+  const FocusTravelPath path{
+      .origin = wlr_box{100, 40, 1800, 300},
+      .destPresented = wlr_box{100, 50000, 1600, 280},
+      .destFinal = wlr_box{100, 820, 1600, 280},
+      .verticalStrip = true,
+      .lead = 0.6,
+  };
+  const wlr_box viewport{0, 0, 2000, 1200};
+  for (int step = 0; step <= 40; ++step) {
+    const double progress = step / 40.0;
+    const wlr_box raw = focusTravelBox(path, progress);
+    const std::optional<wlr_box> box = constrainedFocusTravelBox(path, progress, viewport, 2, 2);
+    CHECK(box.has_value());
+    if (!box) {
+      continue;
+    }
+    CHECK_EQ(box->width, raw.width);
+    CHECK_EQ(box->height, raw.height);
+    const Footprint drawn = footprint(*box, focusTravelStrokeExtent(2, 2));
+    CHECK(drawn.x >= viewport.x);
+    CHECK(drawn.x + drawn.width <= viewport.x + viewport.width);
+    CHECK(drawn.y >= viewport.y);
+    CHECK(drawn.y + drawn.height <= viewport.y + viewport.height);
+  }
+  const wlr_box rawMid = focusTravelBox(path, 0.5);
+  CHECK(rawMid.y > viewport.y + viewport.height);
+  const std::optional<wlr_box> mid = constrainedFocusTravelBox(path, 0.5, viewport, 2, 2);
+  CHECK(mid.has_value());
+  if (mid) {
+    CHECK_EQ(mid->y + mid->height + focusTravelStrokeExtent(2, 2), viewport.y + viewport.height);
+  }
+}
+
+UMBRIEL_TEST(constrainedFocusTravelStaysVisibleThroughLongJourneyUpwardWithNegativePresented) {
+  // Vertical strip, journey direction upward, destination presented far above in negative coordinates.
+  const FocusTravelPath path{
+      .origin = wlr_box{100, 1800, 1800, 300},
+      .destPresented = wlr_box{100, -60000, 1600, 280},
+      .destFinal = wlr_box{100, 60, 1600, 280},
       .verticalStrip = true,
       .lead = 1.0,
   };
+  const wlr_box viewport{0, 0, 2000, 2400};
   for (int step = 0; step <= 40; ++step) {
-    const std::optional<wlr_box> box = constrainedFocusTravelBox(path, step / 40.0, kViewport, 2, 2);
+    const std::optional<wlr_box> box = constrainedFocusTravelBox(path, step / 40.0, viewport, 2, 2);
     CHECK(box.has_value());
     if (!box) {
       continue;
     }
     const Footprint drawn = footprint(*box, focusTravelStrokeExtent(2, 2));
-    CHECK(drawn.y >= kViewport.y);
-    CHECK(drawn.y + drawn.height <= kViewport.y + kViewport.height);
-    CHECK(drawn.x >= kViewport.x);
-    CHECK(drawn.x + drawn.width <= kViewport.x + kViewport.width);
-    CHECK(centerY(*box) >= centerY(path.destFinal) - 1);
+    CHECK(drawn.x >= viewport.x);
+    CHECK(drawn.x + drawn.width <= viewport.x + viewport.width);
+    CHECK(drawn.y >= viewport.y);
+    CHECK(drawn.y + drawn.height <= viewport.y + viewport.height);
+  }
+  const std::optional<wlr_box> mid = constrainedFocusTravelBox(path, 0.5, viewport, 2, 2);
+  CHECK(mid.has_value());
+  if (mid) {
+    CHECK_EQ(mid->y, viewport.y + focusTravelStrokeExtent(2, 2));
+  }
+}
+
+UMBRIEL_TEST(constrainedFocusTravelWithZeroLeadStaysVisibleOnLongJourney) {
+  // Lead zero pins the ring to the camera; even then a far journey must never lose the ring.
+  const FocusTravelPath path{
+      .origin = wlr_box{28, 50, 340, 500},
+      .destPresented = wlr_box{30000, 50, 340, 500},
+      .destFinal = wlr_box{1650, 50, 340, 500},
+      .verticalStrip = false,
+      .lead = 0.0,
+  };
+  const wlr_box viewport{0, 0, 2000, 700};
+  for (int step = 0; step <= 40; ++step) {
+    const std::optional<wlr_box> box = constrainedFocusTravelBox(path, step / 40.0, viewport, 2, 2);
+    CHECK(box.has_value());
+    if (!box) {
+      continue;
+    }
+    const Footprint drawn = footprint(*box, focusTravelStrokeExtent(2, 2));
+    CHECK(drawn.x >= viewport.x);
+    CHECK(drawn.x + drawn.width <= viewport.x + viewport.width);
   }
 }
 
@@ -199,19 +306,26 @@ UMBRIEL_TEST(constrainedFocusTravelRejectsDegenerateJourneyBoxes) {
   CHECK(constrainedFocusTravelBox(path, 0.0, kViewport, 2, 2).has_value());
 }
 
-UMBRIEL_TEST(constrainedFocusTravelPinsOversizedRingToLeadingEdgeDeterministically) {
+UMBRIEL_TEST(constrainedFocusTravelSkipsRingsTooLargeForTheViewport) {
+  // Explicit skip: an origin wider than the viewport has no honest containment at any progress.
   FocusTravelPath path = horizontalJourney(0.6);
-  path.origin = wlr_box{2000, 1200, 2400, 1100}; // wider than the 2000px viewport
+  path.origin = wlr_box{2000, 1200, 2400, 800};
   path.destPresented = wlr_box{5600, 1300, 2400, 900};
   path.destFinal = wlr_box{3400, 1300, 2400, 900};
-  const std::optional<wlr_box> first = constrainedFocusTravelBox(path, 0.5, kViewport, 2, 2);
-  const std::optional<wlr_box> second = constrainedFocusTravelBox(path, 0.5, kViewport, 2, 2);
-  CHECK(first.has_value() && second.has_value());
-  if (first && second) {
-    CHECK(sameBox(*first, *second));
-    CHECK_EQ(first->x, kViewport.x + focusTravelStrokeExtent(2, 2));
-    // Mostly visible: the pinned ring still covers the viewport, overflowing right by the excess.
-    CHECK(first->width > kViewport.width / 2);
+  CHECK(!constrainedFocusTravelBox(path, 0.0, kViewport, 2, 2).has_value());
+  CHECK(!constrainedFocusTravelBox(path, 0.5, kViewport, 2, 2).has_value());
+  CHECK(!constrainedFocusTravelBox(path, 1.0, kViewport, 2, 2).has_value());
+  // Same for an oversized final box, and for a ring the stroke pushes past the limit by one pixel.
+  path.origin = kVisibleOrigin;
+  path.destPresented = kFarRightPresented;
+  path.destFinal = wlr_box{3400, 1300, kViewport.width - 2 * focusTravelStrokeExtent(2, 2) + 1, 900};
+  CHECK(!constrainedFocusTravelBox(path, 1.0, kViewport, 2, 2).has_value());
+  // Exactly fitting is honored, and the translation is the identity there.
+  path.destFinal = wlr_box{1925, 1300, kViewport.width - 2 * focusTravelStrokeExtent(2, 2), 900};
+  const std::optional<wlr_box> end = constrainedFocusTravelBox(path, 1.0, kViewport, 2, 2);
+  CHECK(end.has_value());
+  if (end) {
+    CHECK(sameBox(*end, path.destFinal));
   }
 }
 
