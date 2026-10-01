@@ -190,6 +190,12 @@ namespace umbriel {
           styleField<A::WindowsOut>({"fade", "slide", "popin", "zoom"}),
       });
       static const registry::Fields<A::WindowsMove> windowsMove = eventFields<A::WindowsMove>({});
+      // focus_travel deliberately has no duration_ms, curve, or shader of its own: it rides the windows_move timeline
+      // so the ring and the geometry it leads can never disagree about timing.
+      static const registry::Fields<A::FocusTravel> focusTravel{
+          boolean("enabled", &A::FocusTravel::enabled),
+          real("lead", 0.0, 1.0, &A::FocusTravel::lead),
+      };
       static const registry::Fields<A::WindowsResize> windowsResize = timelineFields<A::WindowsResize>({
           registry::boolean("enabled", &A::WindowsResize::enabled),
           registry::boolean("wait_for_redraw", &A::WindowsResize::waitForRedraw),
@@ -281,6 +287,7 @@ namespace umbriel {
           table("windows_in", &A::windowsIn, windowsIn),
           table("windows_out", &A::windowsOut, windowsOut),
           table("windows_move", &A::windowsMove, windowsMove),
+          table("focus_travel", &A::focusTravel, focusTravel),
           table("windows_resize", &A::windowsResize, windowsResize),
           table("workspaces", &A::workspaces, workspaces),
           table("overview", &A::overview, overview),

@@ -24,6 +24,10 @@ scale = 0.8
 enabled = true
 curve = "spring:1,800"
 
+[animation.focus_travel]
+enabled = false
+lead = 0.6
+
 [animation.windows_resize]
 enabled = true
 curve = "spring:1,900"
@@ -31,6 +35,10 @@ curve = "spring:1,900"
 [animation.windows_opacity]
 enabled = true
 curve = "spring:1,900"
+
+[animation.focus_travel]
+enabled = false
+lead = 0.6             # 0.0-1.0; how far the ring leads the panning layout
 
 [animation.workspaces]
 style = "slide"
@@ -72,7 +80,7 @@ enabled = false
 | `duration_ms` | `250`       | Default duration for non-spring curves. |
 | `curve`       | `"easeout"` | Default easing curve.                   |
 
-Each event other than `windows_drag` also accepts `enabled`, `duration_ms`, and `curve`. A spring curve chooses its own duration, so `duration_ms` has no effect on that event.
+Each event other than `windows_drag` and `focus_travel` also accepts `enabled`, `duration_ms`, and `curve`. A spring curve chooses its own duration, so `duration_ms` has no effect on that event.
 
 ## Event tables
 
@@ -81,6 +89,7 @@ Each event other than `windows_drag` also accepts `enabled`, `duration_ms`, and 
 | `[animation.windows_in]`      | `style`, `scale`                                                    | Window opening                                             |
 | `[animation.windows_out]`     | `style`, `scale`                                                    | Window closing                                             |
 | `[animation.windows_move]`    | none                                                                | Position during moves, reflow, maximize, and restore       |
+| `[animation.focus_travel]`    | `lead` (0.0-1.0), and no timeline of its own                        | Opt-in traveling focus ring for scrolling-layout navigation |
 | `[animation.windows_resize]`  | `wait_for_redraw`, and no `effect`                                  | Size during the same changes                               |
 | `[animation.windows_opacity]` | none, and no `effect`                                               | Focus changes to window-rule opacity and backdrop blur     |
 | `[animation.workspaces]`      | `style`                                                             | Workspace switching                                        |
@@ -111,6 +120,16 @@ When a tiled window closes while `windows_out` is disabled, its last frame stays
 Scratchpad `dim` and `blur` remain active without a fade when animation is disabled. `dim` is the opacity of the black layer over the output behind a visible scratchpad; `blur` blurs it when `[appearance.blur]` is enabled.
 
 Dialogs `dim` works the same way: it is the opacity, 0.0 to 1.0 and `0.3` by default, of the black shade over a window while a modal dialog is attached to it (see [Dialogs](layout.md#dialogs)). The shade fades in when the dialog attaches and out when it leaves, and stays without a fade when animation is disabled.
+
+## Focus travel
+
+`[animation.focus_travel]` is an opt-in traveling focus ring for scrolling-layout navigation. When enabled, activating or directionally focusing a tiled window on the active workspace draws a compositor-owned ring that leads the shared `windows_move` pan and lands on the destination's border. Presentation only: keyboard focus, activation, and input behave exactly as when disabled. It borrows the `windows_move` timeline — duration and curve — so it accepts no `duration_ms`, `curve`, or `shader` of its own; `lead` (0.0-1.0, default `0.6`) sets how far the ring may run ahead of the panning layout, and `lead = 0` keeps the ring locked to the camera.
+
+```toml
+[animation.focus_travel]
+enabled = true
+lead = 0.6
+```
 
 ## Window opacity
 
