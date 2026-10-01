@@ -57,6 +57,7 @@ unit_tests = [
   ['sdr-format', ['unit/sdr_format.cpp'], []],
   ['layout-struts', ['unit/layout_struts.cpp'], []],
   ['layout-motion', ['unit/layout_motion.cpp'], []],
+  ['focus-travel', ['unit/focus_travel.cpp'], []],
   ['scrolling-layout', ['unit/scrolling_layout.cpp'], []],
   ['dwindle-layout', ['unit/dwindle_layout.cpp'], []],
   ['master-layout', ['unit/master_layout.cpp'], []],
