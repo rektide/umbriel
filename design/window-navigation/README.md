@@ -7,6 +7,8 @@ Goal: selecting a window in Vicinae should smoothly travel to it with a configur
 - [Umbriel feasibility](umbriel0.sol61.md): existing foreign-activation reveal path, curve configuration, IPC limits, user clarification, and upstream scope constraints. Source-based, not a visual demonstration.
 - [Vicinae investigation](vicinae0.glm53.md): built-in picker uses wlr foreign-toplevel activation; no selection interception hook is needed for a compositor-owned visual ring. External replacement options include `dmenu` and a custom picker.
 - [Leading-focus first slice](focus-travel0.sol61.md): opt-in compositor-owned ring, shared geometry progress, viewport-constrained leading projection, lifecycle requirements, and verification gates.
+- [Implementation groundwork](implementation0.glm53.md): geometry, opt-in configuration, and border presenter, with the runtime coordination design.
+- [Parent review checkpoint](checkpoint0.sol61.md): approved ownership shape, long-distance visibility correction, lifetime and coordinate constraints, and the next integration slice.
 
 Vicinae's generic provider does not expose workspace metadata, but that does **not** prevent selecting a window on another workspace: activation identifies the window and Umbriel resolves its workspace. A separate workspace picker or richer labels would need additional integration. Keep exact compositor IDs for external orchestration; titles and app IDs are not unique window identities.
 
