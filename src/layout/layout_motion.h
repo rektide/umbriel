@@ -4,6 +4,8 @@ extern "C" {
 #include <wlr/util/box.h>
 }
 
+#include <span>
+
 namespace umbriel {
 
   // One member of a layout transition: the box it leaves and the box it arrives at. Every member of a transition is
@@ -24,5 +26,10 @@ namespace umbriel {
   // True when some axis and order separates `a` and `b` on both sides of the transition, i.e. interpolating them with
   // a shared progress can never make them cross. False marks a pair whose side relation changes (a rearrangement).
   bool keepsSeparation(const MotionBox& a, const MotionBox& b);
+
+  // True when every member keeps its size, stays put on the cross axis, and shifts by one identical strip-axis
+  // delta — the genuine common pan the leading-focus travel formula describes. Same-axis column swaps, resizes,
+  // and rearrangements change displacement between members and fail, as does an empty member list.
+  [[nodiscard]] bool isStripPan(std::span<const MotionBox> members, bool verticalStrip);
 
 } // namespace umbriel

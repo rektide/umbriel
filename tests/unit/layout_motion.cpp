@@ -7,6 +7,7 @@
 #include <vector>
 
 using umbriel::interpolateBox;
+using umbriel::isStripPan;
 using umbriel::keepsSeparation;
 using umbriel::MotionBox;
 
@@ -121,6 +122,54 @@ UMBRIEL_TEST(keepsSeparationFlagsRearrangements) {
   CHECK(!keepsSeparation(a, b));
   CHECK(keepsSeparation(b, c));
   CHECK(keepsSeparation(a, c));
+}
+
+UMBRIEL_TEST(stripPanAcceptsUniformTranslationOnOneAxis) {
+  const std::vector<MotionBox> pan{
+      {{10, 0, 400, 800}, {70, 0, 400, 800}},
+      {{420, 0, 400, 800}, {480, 0, 400, 800}},
+      {{830, 0, 624, 700}, {890, 0, 624, 700}},
+  };
+  CHECK(isStripPan(pan, false));
+  CHECK(!isStripPan(pan, true));
+
+  const std::vector<MotionBox> vertical{
+      {{0, 5, 1280, 300}, {0, 65, 1280, 300}},
+      {{0, 315, 1280, 400}, {0, 375, 1280, 400}},
+  };
+  CHECK(isStripPan(vertical, true));
+  CHECK(!isStripPan(vertical, false));
+  CHECK(!isStripPan({}, false));
+}
+
+UMBRIEL_TEST(stripPanRejectsSameAxisColumnSwap) {
+  // Two columns exchanging places: sizes and axis are fine, displacements disagree.
+  const std::vector<MotionBox> swap{
+      {{10, 0, 400, 800}, {646, 0, 400, 800}},
+      {{646, 0, 400, 800}, {10, 0, 400, 800}},
+  };
+  CHECK(!isStripPan(swap, false));
+}
+
+UMBRIEL_TEST(stripPanRejectsResizeCrossAxisDriftAndMixedDisplacement) {
+  const std::vector<MotionBox> resized{
+      {{10, 0, 400, 800}, {70, 0, 340, 800}},
+      {{420, 0, 400, 800}, {480, 0, 400, 800}},
+  };
+  CHECK(!isStripPan(resized, false));
+
+  const std::vector<MotionBox> drifted{
+      {{10, 0, 400, 800}, {70, 0, 400, 800}},
+      {{420, 0, 400, 800}, {480, 12, 400, 800}},
+  };
+  CHECK(!isStripPan(drifted, false));
+
+  // One member moving by a different amount is a rearrangement, not a pan.
+  const std::vector<MotionBox> mixed{
+      {{10, 0, 400, 800}, {70, 0, 400, 800}},
+      {{420, 0, 400, 800}, {600, 0, 400, 800}},
+  };
+  CHECK(!isStripPan(mixed, false));
 }
 
 int main() { return RUN_TESTS(); }
