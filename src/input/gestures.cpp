@@ -207,6 +207,9 @@ namespace umbriel {
     if (scrolling == nullptr || scrolling->columns().empty()) {
       return false;
     }
+    // Taking the strip by hand ends any leading-focus journey on it; a wheel or touchpad pan never routes through
+    // focusView, so this is the one place the takeover can be seen.
+    workspace->cancelFocusTravel();
     m_scrollWorkspace = workspace;
     m_viewportPrimary = workspace->scrollViewportExtent();
     m_scrollStart = scrolling->scroll();
