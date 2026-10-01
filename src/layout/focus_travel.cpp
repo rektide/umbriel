@@ -86,4 +86,24 @@ namespace umbriel {
     return wlr_box{left + stroke, top + stroke, raw.width, raw.height};
   }
 
+  bool focusTravelEndpointsPreserved(
+      const FocusTravelPath& path, const wlr_box& viewport, const int innerWidth, const int outerWidth
+  ) {
+    const std::optional<wlr_box> start = constrainedFocusTravelBox(path, 0.0, viewport, innerWidth, outerWidth);
+    const std::optional<wlr_box> end = constrainedFocusTravelBox(path, 1.0, viewport, innerWidth, outerWidth);
+    if (!start.has_value() || !end.has_value()) {
+      return false;
+    }
+    const wlr_box& origin = path.origin;
+    const wlr_box& final = path.destFinal;
+    return start->x == origin.x
+        && start->y == origin.y
+        && start->width == origin.width
+        && start->height == origin.height
+        && end->x == final.x
+        && end->y == final.y
+        && end->width == final.width
+        && end->height == final.height;
+  }
+
 } // namespace umbriel

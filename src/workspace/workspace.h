@@ -300,11 +300,16 @@ namespace umbriel {
     };
     LayoutMotion m_motion;
     // Leading-focus travel internals. Bind attaches a pending request to the motion this arrange just built; rebase
-    // retargets a running ring after an unrelated motion restart, refusing any journey that is not a pure strip
-    // translation; present draws the ring for one geometry tick. All three treat the presenter as borrowed state.
-    void bindFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove);
+    // retargets a running ring after an unrelated motion restart, refusing any journey that is not a genuine common
+    // strip pan; present draws the ring for one geometry tick. All three treat the presenter as borrowed state.
+    void bindFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove, bool sameMotionContinues);
     void rebaseFocusTravel(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove);
     void presentFocusTravel(double progress);
+    // The shared bind/rebase acceptance gate: an animated motion that is a genuine common strip pan (every
+    // established member keeps its size and shifts by one identical strip-axis delta), the destination among the
+    // movers, and both natural endpoints surviving constraining exactly. Only the origin policy differs between
+    // bind and rebase; acceptance does not.
+    [[nodiscard]] bool focusTravelJourneyAccepted(const std::vector<LayoutMotion::ViewEntry>& views, bool animateMove);
     struct TrackedCloseSnapshot {
       CloseSnapshotId id = kInvalidCloseSnapshot;
       wlr_box canvas{};
@@ -319,6 +324,11 @@ namespace umbriel {
       // active: the journey is bound and the ring follows the running motion's monotonic geometry progress.
       bool pending = false;
       bool active = false;
+      // The geometry progress the borrowed motion had already reached when this journey bound. Ticks present at
+      // (progress - bindProgress) / (1 - bindProgress), so a journey bound onto a running motion starts where the
+      // ring is instead of leaping to the motion's global fraction. Zero for a journey that binds as the motion
+      // starts; still the borrowed timeline — no second clock.
+      double progressAtBind = 0.0;
     };
     FocusTravelState m_focusTravel;
     std::unique_ptr<FocusTravelRing> m_focusTravelRing;
