@@ -464,6 +464,15 @@ action = "overview-open"
 # enabled = false
 # wait_for_redraw = true
 
+# Opt-in traveling focus ring for scrolling-layout navigation. When enabled,
+# selecting a tiled window draws a compositor-owned ring that leads the
+# windows_move pan and lands on the destination's border. Presentation only:
+# focus and activation are unchanged. Shares the windows_move timeline, so it
+# has no duration_ms, curve, or shader of its own.
+# [animation.focus_travel]
+# enabled = false
+# lead = 0.6 # How far the ring leads the pan, 0.0-1.0.
+
 # Optional live workspace reveal (see docs/user/animation.md).
 # Add the bundled effects/animation/workspace_wipe/effect.toml to your includes.
 # [animation.workspaces]
