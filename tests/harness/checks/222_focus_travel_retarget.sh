@@ -38,10 +38,13 @@ settled_shot "$UMBRIEL_RUNTIME_DIR/setup.png"
 sleep 0.5
 assert_signal_retry "220x160+200+280" 0.005 "ring before retarget"
 "$UMBRIEL" msg "window-focus:$(id_of stack-b)" > /dev/null
-sleep 0.25
+sleep 0.08
 grim "$UMBRIEL_RUNTIME_DIR/retarget.png"
-assert_signal "$UMBRIEL_RUNTIME_DIR/retarget.png" "220x70+405+70" 0.004 "ring continues near first row"
-assert_quiet "$UMBRIEL_RUNTIME_DIR/retarget.png" "220x70+405+200" 0.003 "no global-progress leap"
+# Sample horizontal strokes, away from the ring's vertical sides and the real
+# destination border (whose top is y=364). The old global fraction would put
+# the top stroke in the lower band immediately.
+assert_signal "$UMBRIEL_RUNTIME_DIR/retarget.png" "200x130+700+25" 0.003 "ring continues near first row"
+assert_quiet "$UMBRIEL_RUNTIME_DIR/retarget.png" "200x100+700+190" 0.003 "no global-progress leap"
 assert_only_one_focused stack-b "retarget"
 settled_shot "$UMBRIEL_RUNTIME_DIR/end.png"
 assert_only_one_focused stack-b "settled"
