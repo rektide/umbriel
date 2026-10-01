@@ -30,6 +30,18 @@ settled_shot() {
   return 1
 }
 signal() { magick "$1" -crop "$2" -colorspace RGB -format '%[fx:mean.r - mean.g]' info:; }
+# A horizontal scan distinguishes a supplementary full-height ring from the
+# real focused border, even when cancellation puts that border in the old band.
+accent_strokes() {
+  magick "$1" -crop 1280x1+0+300 -colorspace sRGB \
+    -fx 'r>0.9 && g<0.1 && b>0.9 ? 1 : 0' -depth 8 gray:- |
+    python3 -c 'import sys; p=sys.stdin.buffer.read(); print(sum(v>0 and (i==0 or p[i-1]==0) for i,v in enumerate(p)))'
+}
+assert_no_extra_ring() {
+  local strokes
+  strokes=$(accent_strokes "$1")
+  [[ $strokes -le 2 ]] || { echo "$2: supplementary ring remains ($strokes accent strokes)"; exit 1; }
+}
 assert_signal() {
   local value
   value=$(signal "$1" "$2")

@@ -29,10 +29,10 @@ settled_shot "$UMBRIEL_RUNTIME_DIR/setup.png"
 "$UMBRIEL" msg "window-focus:$(id_of B)" > /dev/null
 sleep 0.75
 assert_signal_retry "240x160+30+280" 0.004 "leftward ring before other-window click"
-"$POINTER" 1280 720 move 640 360 click 272 > /dev/null 2>&1
+"$POINTER" 1280 720 move 1000 360 click 272 > /dev/null 2>&1
 sleep 0.15
 grim "$UMBRIEL_RUNTIME_DIR/other.png"
-assert_quiet "$UMBRIEL_RUNTIME_DIR/other.png" "240x160+30+280" 0.003 "other-window click cancels"
+assert_no_extra_ring "$UMBRIEL_RUNTIME_DIR/other.png" "other-window click cancels"
 assert_only_one_focused C "click target"
 settled_shot "$UMBRIEL_RUNTIME_DIR/other-settled.png"
 "$UMBRIEL" msg "window-focus:$(id_of B)" > /dev/null
@@ -41,7 +41,7 @@ assert_signal_retry "240x160+30+280" 0.004 "ring before destination click"
 "$POINTER" 1280 720 move 200 360 click 272 > /dev/null 2>&1
 sleep 0.15
 grim "$UMBRIEL_RUNTIME_DIR/same.png"
-assert_quiet "$UMBRIEL_RUNTIME_DIR/same.png" "240x160+30+280" 0.003 "destination click cancels"
+assert_no_extra_ring "$UMBRIEL_RUNTIME_DIR/same.png" "destination click cancels"
 assert_only_one_focused B "destination remains focused"
 settled_shot "$UMBRIEL_RUNTIME_DIR/same-settled.png"
 echo "manual pointer takeover cancels both different and same-target journeys"
