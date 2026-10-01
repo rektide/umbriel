@@ -681,7 +681,7 @@ namespace umbriel {
           m_workspace->deferFocusChrome();
         }
         if (m_workspace->active() && !m_server->sessionLocked()) {
-          m_server->focusView(replacement, FocusReason::Directional);
+          m_server->focusView(replacement, FocusReason::Removal);
         } else {
           m_workspace->setFocusedView(replacement);
         }
