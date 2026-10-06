@@ -107,6 +107,8 @@ default_extent_fraction = 0.5
 center_underfull_strip = true
 center_focused = "never"
 center_on_overview_select = false
+reveal_padding = 100
+snap_padding = 100
 ```
 
 | Key                         | Default   | Description                                                                                                                                   |
@@ -115,6 +117,8 @@ center_on_overview_select = false
 | `center_underfull_strip`    | `true`    | Center a strip narrower than the viewport.                                                                                                    |
 | `center_focused`            | `"never"` | Use `"never"`, `"always"`, or `"on_overflow"` to control focus centering.                                                                     |
 | `center_on_overview_select` | `false`   | Center the column picked in the overview on close, like `column-center`, whatever `center_focused` says.                                      |
+| `reveal_padding`            | `0`       | Minimum logical pixels between a focus-revealed column and the viewport edge it enters from, so the strip's continuation stays visible beyond it. `0` lands it flush. The strip's scroll bounds still apply: a column at either end rests flush when no content remains beyond it. Ignored when a `center_focused` policy centers the column. The packaged config uses `100`. |
+| `snap_padding`              | `0`       | Minimum logical pixels between a snapped column's leading edge and the start edge, for landings from overview activation, fullscreen exit, and re-tiling. `0` snaps flush. The packaged config uses `100`. |
 
 ### Horizontal and vertical scrolling
 
@@ -140,7 +144,7 @@ default_extent_fraction = 0.4
 
 A workspace rule can override both global and output defaults. Reloading these settings affects new columns only.
 
-When focus moves to a hidden column, Umbriel scrolls just far enough to reveal it. Dragged windows show an insertion preview and can be dropped into a new or existing column.
+When focus moves to a hidden column, Umbriel scrolls just far enough to reveal it, keeping at least `reveal_padding` logical pixels between the column and the viewport edge it enters from. With the default `0` the column lands flush against that edge; the strip's scroll bounds still apply, so a column at either end rests flush when no content remains beyond it. Overview activation, fullscreen exit, and re-tiling snap the column back with its leading edge `snap_padding` pixels from the start edge. Dragged windows show an insertion preview and can be dropped into a new or existing column.
 
 During an application drag-and-drop operation, holding the pointer near either edge of the scrolling axis reveals offscreen columns after a short delay. The strip moves faster as the pointer approaches the edge, and stops when the pointer moves away or the drag ends. A window revealed beneath a stationary pointer becomes the active drop target, so the file or other payload can be dropped without extra pointer motion.
 

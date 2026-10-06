@@ -188,6 +188,8 @@ Later values replace earlier ones. Strut edges are resolved independently, so a 
 | `layout.scrolling.center_underfull_strip`    | Center or start-align an underfull strip.                                                                                                   |
 | `layout.scrolling.center_focused`            | Control when focus changes center a column.                                                                                                 |
 | `layout.scrolling.center_on_overview_select` | Center the column picked in the overview.                                                                                                   |
+| `layout.scrolling.reveal_padding`            | Minimum logical pixels between a focus-revealed column and the viewport edge it enters from (0-8192). `0` lands it flush.                    |
+| `layout.scrolling.snap_padding`              | Minimum logical pixels between a snapped column's leading edge and the start edge (0-8192), for overview activation, fullscreen exit, and re-tiling landings. `0` snaps flush. |
 | `layout.master.position`                     | Place the master area left, right, or center.                                                                                               |
 | `layout.master.default_width_fraction`       | Set the master-area fraction.                                                                                                               |
 | `layout.master.new_on_top`                   | Place new stack windows at the top or bottom.                                                                                               |

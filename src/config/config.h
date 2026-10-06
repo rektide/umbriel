@@ -103,6 +103,8 @@ namespace umbriel {
       std::optional<bool> centerUnderfullStrip;
       std::optional<CenterFocusedColumn> centerFocused;
       std::optional<bool> centerOnOverviewSelect;
+      std::optional<int> revealPadding;
+      std::optional<int> snapPadding;
       bool operator==(const Scrolling&) const = default;
     } scrolling;
     struct Dwindle {
@@ -165,6 +167,11 @@ namespace umbriel {
       bool centerUnderfullStrip = true;
       CenterFocusedColumn centerFocused = CenterFocusedColumn::Never;
       bool centerOnOverviewSelect = false;
+      // Minimum logical px between the focused column and the viewport edge it
+      // is revealed from (revealPadding), or between a snapped column's leading
+      // edge and the start edge (snapPadding). 0 lands flush.
+      int revealPadding = 0;
+      int snapPadding = 0;
       // Axis-agnostic layout state is preserved when config reload changes direction.
       ScrollingDirection direction = ScrollingDirection::Horizontal;
       bool operator==(const Scrolling&) const = default;
@@ -1055,6 +1062,8 @@ namespace umbriel {
         CenterFocusedColumn centerFocused = CenterFocusedColumn::Never;
         // Center the column picked in the overview on close, like column-center, whatever centerFocused says.
         bool centerOnOverviewSelect = false;
+        int revealPadding = 0;
+        int snapPadding = 0;
         bool operator==(const Scrolling&) const = default;
       } scrolling;
       struct Dwindle {
