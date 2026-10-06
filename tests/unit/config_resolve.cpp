@@ -218,6 +218,29 @@ UMBRIEL_TEST(omittedScrollingDefaultWidthRemainsUnset) {
   CHECK(!workspace.scrolling.defaultExtentFraction.has_value());
 }
 
+UMBRIEL_TEST(scrollingPaddingResolvesGlobalAndPerWorkspace) {
+  Config config;
+  config.layout.scrolling.revealPadding = 100;
+  config.layout.scrolling.snapPadding = 80;
+
+  WorkspaceConfig overrideRule;
+  overrideRule.name = "dev";
+  overrideRule.layout.scrolling.revealPadding = 240;
+  config.workspaceRules.push_back(std::move(overrideRule));
+
+  const auto global = umbriel::resolveGlobalLayout(config);
+  CHECK_EQ(global.scrolling.revealPadding, 100);
+  CHECK_EQ(global.scrolling.snapPadding, 80);
+
+  const auto plain = umbriel::resolveWorkspaceLayout(config, identity("DP-1"), "web", 0);
+  CHECK_EQ(plain.scrolling.revealPadding, 100);
+  CHECK_EQ(plain.scrolling.snapPadding, 80);
+
+  const auto overridden = umbriel::resolveWorkspaceLayout(config, identity("DP-1"), "dev", 0);
+  CHECK_EQ(overridden.scrolling.revealPadding, 240);
+  CHECK_EQ(overridden.scrolling.snapPadding, 80);
+}
+
 UMBRIEL_TEST(workspaceInventoryResolvesStaticAndDynamicOutputs) {
   Config config;
   OutputRule fixed;
