@@ -510,6 +510,8 @@ bottom = 0
 default_extent_fraction = 0.5                   # Initial extent for new columns, 0.1-1.0
 center_underfull_strip = true                   # Center a strip narrower than the viewport
 center_focused = "never"                        # never, always, or on_overflow
+reveal_padding = 100                            # Min px between a focus-revealed column and its entering edge
+snap_padding = 100                              # Min px between a snapped-back column and the start edge
 
 [layout.dwindle]
 # preserve_split = false                        # Keep every split direction fixed after creation

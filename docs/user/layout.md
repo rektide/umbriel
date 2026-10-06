@@ -87,6 +87,8 @@ horizontally scrolls vertically.
 default_extent_fraction = 0.5         # remove to let clients choose, 0.1-1.0
 center_underfull_strip = true
 center_focused = "never"             # "never", "always", or "on_overflow"
+reveal_padding = 100                  # min px between a revealed column and its entering edge
+snap_padding = 100                    # min px between a snapped column and the start edge
 ```
 
 | Key | Type | Default | Description |
@@ -94,6 +96,8 @@ center_focused = "never"             # "never", "always", or "on_overflow"
 | `default_extent_fraction` | float | unset | Initial strip-axis extent for new columns (0.1-1.0). The packaged config sets `0.5`; a matching output or workspace rule can override it. When it is unset at every level, the client chooses its initial extent. |
 | `center_underfull_strip` | bool | `true` | Center the complete strip when it is shorter than the viewport. Disable to align it at the start edge. |
 | `center_focused` | string | `"never"` | When a focus change centers the newly focused column. `"never"` only scrolls far enough to reveal it, `"always"` centers it, and `"on_overflow"` centers it when it cannot share the viewport with the neighboring column on the side focus came from. |
+| `reveal_padding` | int | `0` | Minimum logical pixels kept between a focus-revealed column and the viewport edge it enters from, so the strip's continuation stays visible beyond it. `0` lands the column flush against that edge. The packaged config sets `100`. The strip's scroll bounds still apply: a column at either end rests flush when no content remains beyond it. Ignored when a `center_focused` policy centers the column. |
+| `snap_padding` | int | `0` | Minimum logical pixels kept between a snapped column's leading edge and the start edge, for landings from overview activation, fullscreen exit, and re-tiling. `0` snaps flush against the start edge. The packaged config sets `100`. |
 
 ### Horizontal and vertical scrolling
 
@@ -155,9 +159,14 @@ new column creates a column using the current default.
 
 When focus moves to a hidden or partially hidden column, Umbriel reveals it by
 the shortest distance needed to show it completely. A column entering from the
-right aligns with the right viewport edge, and one entering from the left aligns
-with the left edge. Focus does not reserve a visible sliver for the next column.
-Resizing a column recenters an underfull strip immediately.
+right stops at least `reveal_padding` logical pixels short of the right viewport
+edge, and one entering from the left stops equally short of the left edge, so a
+sliver of the strip's continuation stays visible beyond the focused column. With
+the default `0` a column lands flush against the edge it enters from. The
+strip's scroll bounds still apply, so a column at either end of the strip rests
+flush when no content remains beyond it. Overview activation, fullscreen exit,
+and re-tiling snap the column back with its leading edge `snap_padding` pixels
+from the start edge. Resizing a column recenters an underfull strip immediately.
 
 Dragged windows become translucent so the insertion preview remains visible.
 Existing window transparency still applies during the drag. When a column is

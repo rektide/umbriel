@@ -287,6 +287,8 @@ Strut edges are resolved independently. A rule that sets only
 | `layout.scrolling.default_extent_fraction` | float | Optional initial scrolling lane extent (0.1-1.0). It overrides the global and matching output values. When omitted at every level, the client chooses its initial logical extent. Reloading a default does not resize existing columns. |
 | `layout.scrolling.center_underfull_strip` | bool | Center the complete strip whenever it is narrower than the viewport. Disable to left-align underfull strips. |
 | `layout.scrolling.center_focused` | string | When a focus change centers the newly focused column. `"never"` only scrolls far enough to reveal it, `"always"` centers it, and `"on_overflow"` centers it when it cannot share the viewport with the neighboring column on the side focus came from. |
+| `layout.scrolling.reveal_padding` | int | Minimum logical pixels between a focus-revealed column and the viewport edge it enters from (0-8192). `0` lands it flush. |
+| `layout.scrolling.snap_padding` | int | Minimum logical pixels between a snapped column's leading edge and the start edge (0-8192), for overview activation, fullscreen exit, and re-tiling landings. `0` snaps flush. |
 | `layout.master.position` | string | Side occupied by the master area: `"left"`, `"right"`, or `"center"` between two stacks. |
 | `layout.master.default_width_fraction` | float | Master area fraction when both areas exist (0.1-0.9). |
 | `layout.master.new_on_top` | bool | Place newly opened windows at the top of the stack. Disable to place them at the bottom. |

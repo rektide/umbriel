@@ -599,6 +599,10 @@ namespace umbriel {
       return parsed;
     }
 
+    // Upper bound for scrolling reveal/snap padding: generous headroom for
+    // high-density displays while staying well inside strut-range integers.
+    constexpr int kMaxScrollPadding = 8192;
+
     template <typename Struts> void readLayoutStruts(Section& section, Struts& struts) {
       constexpr int kStrutLimit = 65535;
       section.integer("left", -kStrutLimit, kStrutLimit, struts.left)
@@ -624,7 +628,9 @@ namespace umbriel {
             }
             s.sub("scrolling", [&](Section& sc) {
               sc.real("default_extent_fraction", 0.1, 1.0, overrides.scrolling.defaultExtentFraction)
-                  .boolean("center_underfull_strip", overrides.scrolling.centerUnderfullStrip);
+                  .boolean("center_underfull_strip", overrides.scrolling.centerUnderfullStrip)
+                  .integer("reveal_padding", 0, kMaxScrollPadding, overrides.scrolling.revealPadding)
+                  .integer("snap_padding", 0, kMaxScrollPadding, overrides.scrolling.snapPadding);
               if (const auto centerFocused = readCenterFocused(sc, layoutContext + ".scrolling")) {
                 overrides.scrolling.centerFocused = centerFocused;
               }
@@ -1350,7 +1356,9 @@ namespace umbriel {
         }
         s.sub("scrolling", [&](Section& sc) {
           sc.real("default_extent_fraction", 0.1, 1.0, loaded.layout.scrolling.defaultExtentFraction)
-              .boolean("center_underfull_strip", loaded.layout.scrolling.centerUnderfullStrip);
+              .boolean("center_underfull_strip", loaded.layout.scrolling.centerUnderfullStrip)
+              .integer("reveal_padding", 0, kMaxScrollPadding, loaded.layout.scrolling.revealPadding)
+              .integer("snap_padding", 0, kMaxScrollPadding, loaded.layout.scrolling.snapPadding);
           if (const auto centerFocused = readCenterFocused(sc, "layout.scrolling")) {
             loaded.layout.scrolling.centerFocused = *centerFocused;
           }

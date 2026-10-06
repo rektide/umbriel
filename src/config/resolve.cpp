@@ -111,6 +111,12 @@ namespace umbriel {
       if (overrides.scrolling.centerFocused) {
         resolved.scrolling.centerFocused = *overrides.scrolling.centerFocused;
       }
+      if (overrides.scrolling.revealPadding) {
+        resolved.scrolling.revealPadding = *overrides.scrolling.revealPadding;
+      }
+      if (overrides.scrolling.snapPadding) {
+        resolved.scrolling.snapPadding = *overrides.scrolling.snapPadding;
+      }
       if (overrides.dwindle.preserveSplit) {
         resolved.dwindle.preserveSplit = *overrides.dwindle.preserveSplit;
       }
@@ -383,6 +389,8 @@ namespace umbriel {
     resolved.scrolling.defaultExtentFraction = config.layout.scrolling.defaultExtentFraction;
     resolved.scrolling.centerUnderfullStrip = config.layout.scrolling.centerUnderfullStrip;
     resolved.scrolling.centerFocused = config.layout.scrolling.centerFocused;
+    resolved.scrolling.revealPadding = config.layout.scrolling.revealPadding;
+    resolved.scrolling.snapPadding = config.layout.scrolling.snapPadding;
     resolved.dwindle.preserveSplit = config.layout.dwindle.preserveSplit;
     resolved.dwindle.newExitsFullscreen = config.layout.dwindle.newExitsFullscreen;
     resolved.master.defaultWidthFraction = config.layout.master.defaultWidthFraction;
