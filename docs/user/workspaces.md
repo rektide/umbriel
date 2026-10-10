@@ -179,6 +179,8 @@ rule can override only `layout.struts.top`.
 | `layout.scrolling.default_extent_fraction` | Set the initial scrolling-column extent. |
 | `layout.scrolling.center_underfull_strip` | Center or start-align an underfull strip. |
 | `layout.scrolling.center_focused` | Control when focus changes center a column. |
+| `layout.scrolling.reveal_padding` | Keep focus-revealed columns clear of the viewport edge they enter from. |
+| `layout.scrolling.snap_padding` | Keep snapped-back columns clear of the start edge. |
 | `layout.master.position` | Place the master area left, right, or center. |
 | `layout.master.default_width_fraction` | Set the master-area fraction. |
 | `layout.master.new_on_top` | Place new stack windows at the top or bottom. |

@@ -87,6 +87,8 @@ horizontal strip; horizontal workspaces use a vertical strip.
 default_extent_fraction = 0.5
 center_underfull_strip = true
 center_focused = "never"
+reveal_padding = 100
+snap_padding = 100
 ```
 
 | Key | Default | Description |
@@ -94,6 +96,8 @@ center_focused = "never"
 | `default_extent_fraction` | unset | Initial column extent from 0.1 to 1.0. The packaged config uses `0.5`. |
 | `center_underfull_strip` | `true` | Center a strip narrower than the viewport. |
 | `center_focused` | `"never"` | Use `"never"`, `"always"`, or `"on_overflow"` to control focus centering. |
+| `reveal_padding` | `0` | Minimum logical pixels between a focus-revealed column and the viewport edge it enters from, so the strip's continuation stays visible beyond it. `0` lands the column flush against that edge. The packaged config sets `100`. The strip's scroll bounds still apply: a column at either end rests flush when no content remains beyond it. Ignored when a `center_focused` policy centers the column. |
+| `snap_padding` | `0` | Minimum logical pixels between a snapped column's leading edge and the start edge, for landings from overview activation, fullscreen exit, and re-tiling. `0` snaps flush against the start edge. The packaged config sets `100`. |
 
 ### Horizontal and vertical scrolling
 
@@ -149,6 +153,14 @@ rule with the column that took its place. Moving or resizing the focused column
 does too, as does going fullscreen or maximized to edges. A lone column has no
 such pair, so it never centers itself; `center_underfull_strip` decides where it
 rests.
+
+Without a centering policy, focus reveals keep at least `reveal_padding`
+logical pixels between the revealed column and the viewport edge it enters
+from, so the strip's continuation stays visible beyond it; with the default
+`0` the column lands flush. Overview activation, fullscreen exit, and
+re-tiling snap the column back with its leading edge `snap_padding` pixels
+from the start edge. The strip's scroll bounds still apply: a column at
+either end rests flush when no content remains beyond it.
 
 Closing a focused column moves focus to the nearest surviving column. When that
 column contains stacked windows, Umbriel restores its most recently focused

@@ -967,7 +967,10 @@ namespace umbriel {
       return static_cast<double>(x) - (viewportPrimary - width) / 2.0;
     }
     if (force) {
-      return std::clamp(static_cast<double>(x), 0.0, max);
+      // A snap (overview activation, fullscreen exit, re-tiling) parks the
+      // column's leading edge at the start edge; snap padding reserves room for
+      // the tail of the previous lane instead of landing flush.
+      return std::clamp(static_cast<double>(x - m_config->scrolling.snapPadding), 0.0, max);
     }
     // Already fully on screen: never move the strip, including one parked past an edge on purpose (column-center
     // overshoots the range so edge columns can sit in the middle). A touchpad swipe that left the strip outside its
@@ -976,12 +979,16 @@ namespace umbriel {
       return m_centeredRest ? m_scroll : std::clamp(m_scroll, 0.0, max);
     }
 
-    // Move by the shortest distance that reveals the whole column. A column entering from the right lands flush against
-    // the right edge, while one entering from the left lands flush against the left edge. Do not reserve space for a
-    // neighboring sliver after focus has moved.
-    const double scroll =
-        std::clamp(m_scroll, static_cast<double>(x + width - viewportPrimary), static_cast<double>(x));
-    return std::clamp(scroll, 0.0, max);
+    // Move by the shortest distance that reveals the whole column, keeping at least revealPadding between the column
+    // and the edge it enters from, so the strip's continuation stays legible beyond the focused lane. A column
+    // entering from the right lands padding short of the right edge, one entering from the left padding short of the
+    // left edge. The scroll-range clamp keeps lanes flush at the strip ends when no content remains beyond them.
+    const double revealPad = static_cast<double>(m_config->scrolling.revealPadding);
+    const double trailing = static_cast<double>(x + width - viewportPrimary);
+    if (m_scroll < trailing) {
+      return std::clamp(trailing + revealPad, 0.0, max);
+    }
+    return std::clamp(static_cast<double>(x) - revealPad, 0.0, max);
   }
 
   double ScrollingLayout::scrollAmountToEnsureVisible(int columnIndex, int viewportPrimary) const {
