@@ -69,7 +69,7 @@ Restricted clients retain the protocols needed for ordinary windows, rendering, 
 - Virtual input and input-method ownership
 - Clipboard-manager access
 - Layer shell and session locking
-- Gamma and output configuration
+- Gamma, output configuration, and output power management
 - DRM leasing of non-desktop displays
 - Global workspace and window control
 - Creation of nested security contexts
