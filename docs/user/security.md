@@ -35,7 +35,7 @@ Umbriel withholds compositor-wide authority, including:
 - Virtual input and input-method ownership
 - Clipboard-manager access
 - Layer shell and session locking
-- Gamma and output configuration
+- Gamma, output configuration, and output power management
 - Global workspace and window control
 - Creation of nested security contexts
 

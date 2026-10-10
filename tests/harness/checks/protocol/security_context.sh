@@ -60,6 +60,7 @@ readonly -a RESTRICTED_GLOBALS=(
   ext_image_copy_capture_manager_v1
   zwlr_gamma_control_manager_v1
   zwlr_output_manager_v1
+  zwlr_output_power_manager_v1
   zwlr_foreign_toplevel_manager_v1
   ext_foreign_toplevel_list_v1
   ext_workspace_manager_v1

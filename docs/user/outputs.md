@@ -387,6 +387,16 @@ every output is powered off. Outputs disabled with `enabled = false` are not
 affected. DPMS does not remove an output from the logical desktop, move its
 windows, or exclude it from a whole-desktop capture.
 
+Idle daemons such as swayidle and hypridle can drive the same power state
+through `wlr-output-power-management-unstable-v1` instead of the IPC actions.
+Each `zwlr_output_power_v1` object reports the output's current mode when it
+is created and after every change, whichever side caused it: the daemon's own
+`set_mode`, a DPMS action, or the input wake above. A protocol power-off
+behaves exactly like the DPMS actions, so `dpms-on` / `dpms-off` remain
+usable alongside it. A protocol `set_mode(on)` for a logically disabled
+output reports power mode `off` and changes nothing until the output is
+enabled again, matching how other compositors expose this protocol.
+
 ## Live reconfiguration
 
 Tools such as `wlr-randr`, `kanshi`, and `wdisplays` can change enabled state,

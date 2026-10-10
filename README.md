@@ -64,7 +64,8 @@ To understand the values and philosophy guiding the project, read our [ethos](ht
 - Explicit GPU synchronization through linux-drm-syncobj when supported by the renderer and backend
 - [Restricted Wayland connections](docs/user/security.md) for sandbox engines through security-context-v1, with
   per-application protocol grants
-- Layer shell, session locking, clipboard management, screen capture, output control, and gamma control
+- Layer shell, session locking, clipboard management, screen capture, output control and display power
+  management, and gamma control
 - On-demand X11 application support through Xwayland, with optional native-resolution rendering on scaled outputs
 - [Virtual outputs](docs/user/outputs.md#virtual-outputs) for screen sharing and
   [Sunshine/Moonlight game streaming](docs/user/streaming.md)
