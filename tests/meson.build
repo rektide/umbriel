@@ -506,6 +506,19 @@ output_management_client = executable(
   dependencies: [wayland_client_dep],
 )
 
+# Harness helper that follows every output's power mode through
+# wlr-output-power-management and sends set_mode on demand, the way an idle
+# daemon such as swayidle does.
+output_power_client = executable(
+  'output-power-client',
+  [
+    'harness/clients/output_power_client.cpp',
+    output_power_client_h,
+    output_power_client_c,
+  ],
+  dependencies: [wayland_client_dep],
+)
+
 # Harness helper that counts, bounds, and samples screenshot pixels for checks.
 pixel_probe = executable(
   'pixel-probe',
@@ -582,4 +595,5 @@ harness_client_targets = [
   xsettings_client,
   wayland_cursor_client,
   output_management_client,
+  output_power_client,
 ]
