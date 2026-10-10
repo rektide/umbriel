@@ -154,6 +154,9 @@ namespace umbriel {
       using Master = decltype(L::master);
       using Tabs = decltype(L::tabs);
       constexpr int kStrutLimit = 65535;
+      // Upper bound for scrolling reveal/snap padding: generous headroom for
+      // high-density displays while staying well inside strut-range integers.
+      constexpr int kMaxScrollPadding = 8192;
 
       static const Fields<Struts> struts{
           integer("left", -kStrutLimit, kStrutLimit, &Struts::left),
@@ -165,6 +168,8 @@ namespace umbriel {
           real("default_extent_fraction", 0.1, 1.0, &Scrolling::defaultExtentFraction),
           boolean("center_underfull_strip", &Scrolling::centerUnderfullStrip),
           choice("center_focused", &Scrolling::centerFocused, centerFocusedModes()),
+          integer("reveal_padding", 0, kMaxScrollPadding, &Scrolling::revealPadding),
+          integer("snap_padding", 0, kMaxScrollPadding, &Scrolling::snapPadding),
       };
       static const Fields<Dwindle> dwindle{
           boolean("preserve_split", &Dwindle::preserveSplit),
