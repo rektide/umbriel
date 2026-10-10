@@ -198,7 +198,7 @@ namespace umbriel {
     // A capture holding `captureLocks` must see frames without in-place effects.
     [[nodiscard]] bool effectCapturePending(int captureLocks) const;
     void disarmEffectFrame();
-    wlr_output_layout_output* addToLayout();
+    wlr_output_layout_output* addToLayout(bool reconnecting);
     void arrangeLayer(wlr_scene_tree* tree, const wlr_box* fullArea, wlr_box* usableArea, bool exclusive);
     void updateOptimizedBlur(const wlr_box& fullArea);
 
