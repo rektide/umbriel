@@ -815,6 +815,42 @@ layout.scrolling.center_focused = "always"
   CHECK(!containsDiagnostic(store, "unknown key layout.scrolling.center_focused"));
 }
 
+UMBRIEL_TEST(scrollingPaddingDefaultsToFlushAndReadsBothLevels) {
+  const TempConfig file;
+  ConfigStore& store = umbriel::configStore();
+  store.setRootPath(file.path(), true);
+
+  file.write("[layout.scrolling]\ncenter_underfull_strip = true\n");
+  CHECK(store.reload().success);
+  CHECK_EQ(store.config().layout.scrolling.revealPadding, 0);
+  CHECK_EQ(store.config().layout.scrolling.snapPadding, 0);
+
+  file.write(R"(
+[layout.scrolling]
+reveal_padding = 120
+snap_padding = 60
+
+[[workspace]]
+name = "dev"
+[workspace.layout.scrolling]
+reveal_padding = 240
+)");
+  CHECK(store.reload().success);
+  CHECK_EQ(store.config().layout.scrolling.revealPadding, 120);
+  CHECK_EQ(store.config().layout.scrolling.snapPadding, 60);
+  const auto& overrides = store.config().workspaceRules[0].layout.scrolling;
+  CHECK(overrides.revealPadding.has_value());
+  CHECK_EQ(*overrides.revealPadding, 240);
+  CHECK(!overrides.snapPadding.has_value());
+
+  file.write("[layout.scrolling]\nreveal_padding = -5\nsnap_padding = 90000\n");
+  CHECK(store.reload().success);
+  CHECK_EQ(store.config().layout.scrolling.revealPadding, 0);
+  CHECK_EQ(store.config().layout.scrolling.snapPadding, 8192);
+  CHECK(containsDiagnostic(store, "layout.scrolling.reveal_padding = -5 out of range, clamped to 0"));
+  CHECK(containsDiagnostic(store, "layout.scrolling.snap_padding = 90000 out of range, clamped to 8192"));
+}
+
 UMBRIEL_TEST(modKeyIsUserConfigurable) {
   const TempConfig file;
   ConfigStore& store = umbriel::configStore();
