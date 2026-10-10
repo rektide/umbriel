@@ -182,6 +182,19 @@ layer_shell_protocol_dep = declare_dependency(
   include_directories: include_directories('.'),
 )
 
+# wlroots' output-power-management header includes its generated header by name
+# the same way, so it gets the same build-root generation and include path.
+output_power_protocol_h = custom_target(
+  'wlr-output-power-management-unstable-v1-protocol.h',
+  input: 'protocols/wlr-output-power-management-unstable-v1.xml',
+  output: 'wlr-output-power-management-unstable-v1-protocol.h',
+  command: [wayland_scanner, 'server-header', '@INPUT@', '@OUTPUT@'],
+)
+output_power_protocol_dep = declare_dependency(
+  sources: output_power_protocol_h,
+  include_directories: include_directories('.'),
+)
+
 # Off by default: an enabled client opens a listening socket. The probe is
 # `___tracy_connected` because the no-op stub still links and records nothing.
 tracy_dep = dependency('tracy', required: get_option('tracy'))
@@ -220,6 +233,19 @@ layer_shell_client_c = custom_target(
   'wlr-layer-shell-unstable-v1-client-protocol.c',
   input: 'protocols/wlr-layer-shell-unstable-v1.xml',
   output: 'wlr-layer-shell-unstable-v1-client-protocol.c',
+  command: [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
+)
+
+output_power_client_h = custom_target(
+  'wlr-output-power-management-unstable-v1-client-protocol.h',
+  input: 'protocols/wlr-output-power-management-unstable-v1.xml',
+  output: 'wlr-output-power-management-unstable-v1-client-protocol.h',
+  command: [wayland_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
+)
+output_power_client_c = custom_target(
+  'wlr-output-power-management-unstable-v1-client-protocol.c',
+  input: 'protocols/wlr-output-power-management-unstable-v1.xml',
+  output: 'wlr-output-power-management-unstable-v1-protocol.c',
   command: [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
 )
 
@@ -742,6 +768,7 @@ umbriel_pure_deps = [
   umbrielfx_dep,
   tomlplusplus_dep,
   layer_shell_protocol_dep,
+  output_power_protocol_dep,
 ]
 
 umbriel_pure = static_library(
@@ -883,6 +910,7 @@ umbriel_core_deps = [
   libsystemd_dep,
   nlohmann_json_dep,
   layer_shell_protocol_dep,
+  output_power_protocol_dep,
   xcb_dep,
   xcb_icccm_dep,
   xcb_ewmh_dep,
