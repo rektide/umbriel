@@ -134,6 +134,16 @@ to its right therefore starts at x = 3072.
 Omit `position` to place outputs automatically from left to right. Explicitly
 positioned outputs must touch or overlap for the pointer to move between them.
 
+Automatic placement remembers the arrangement it established. A monitor that
+drops off (a DP link loss, standby) and returns is placed back where the
+arrangement had it, instead of being appended after the remaining outputs —
+which would mirror the layout against the physical desk whenever the leaving
+monitor was not the rightmost. Outputs moved while a monitor is away through
+[live reconfiguration](#live-reconfiguration) keep their new positions; the
+returning monitor comes back to its remembered spot regardless. Pin
+`position` explicitly when the arrangement must survive anything, including
+arrangements made while a monitor was disconnected.
+
 ### Transform values
 
 Accepted values are `normal`, `90`, `180`, `270`, `flipped`, `flipped-90`,
