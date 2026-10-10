@@ -86,6 +86,7 @@ struct wlr_ext_workspace_handle_v1;
 struct wlr_ext_workspace_manager_v1;
 struct wlr_gamma_control_manager_v1;
 struct wlr_output_manager_v1;
+struct wlr_output_power_manager_v1;
 struct wlr_output_configuration_v1;
 struct wlr_scene_tree;
 struct wlr_virtual_keyboard_manager_v1;
@@ -577,6 +578,7 @@ namespace umbriel {
     static void onRequestActivate(wl_listener* listener, void* data);
     static void onWorkspaceCommit(wl_listener* listener, void* data);
     static void onSetGamma(wl_listener* listener, void* data);
+    static void onOutputPowerSetMode(wl_listener* listener, void* data);
     static void onPointerDestroy(wl_listener* listener, void* data);
     static void onTouchDestroy(wl_listener* listener, void* data);
     static void onTabletDestroy(wl_listener* listener, void* data);
@@ -780,6 +782,10 @@ namespace umbriel {
     bool m_idleInhibited = false;
     wlr_xdg_activation_v1* m_xdgActivation = nullptr;
     wlr_gamma_control_manager_v1* m_gammaManager = nullptr;
+    // Reports and sets physical output power for idle daemons through
+    // wlr-output-power-management; the mode events clients receive are driven
+    // by wlroots from the output commits Output::setPowered issues.
+    wlr_output_power_manager_v1* m_outputPowerManager = nullptr;
     wlr_output_manager_v1* m_outputManager = nullptr;
     // Layout mutations emit synchronously. Hold manager publication until a
     // multi-output transaction has reached its final logical state.
@@ -1007,6 +1013,7 @@ namespace umbriel {
     wl_listener m_requestActivate{};
     wl_listener m_workspaceCommit{};
     wl_listener m_setGamma{};
+    wl_listener m_outputPowerSetMode{};
     wl_listener m_outputManagerApply{};
     wl_listener m_outputManagerTest{};
     wl_listener m_outputLayoutChange{};
