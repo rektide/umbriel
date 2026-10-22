@@ -866,6 +866,8 @@ namespace umbriel {
     bool m_restorePinnedAfterFullscreen = false;
     // The toplevel's fullscreen state as of its last commit, so the commit that leaves fullscreen can be detected.
     bool m_committedFullscreen = false;
+    // Publish committed geometry progress independently of target arrangement.
+    ClientSize m_ipcContentSize;
     // Set when a float toggle drops fullscreen: re-tiling restores fullscreen before the layout attach, so the client
     // never sees a transient column-sized configure. Cleared when fullscreen is left by any other path.
     bool m_refullscreenOnTile = false;

@@ -7,7 +7,7 @@ status: implemented
 generated: { at: 2026-10-22, by: 'model:openai/gpt-6-astra#medium' }
 sources:
   - resource: opencode://ses_e9a70297dffe6dQ5UJP0up8m7T
-    title: Design and implement native conditional allocation, Rust bindings and isolated verification
+    title: Implement native allocation and Rust bindings, then carry narrowly onto the preserved composed base with committed-size stream verification
   - resource: ../../src/server/ipc_layout.cpp
     title: Native snapshot, complete-basis check, preview and atomic assignment
   - resource: ../../src/layout/scrolling.cpp
@@ -17,6 +17,13 @@ sources:
 ---
 
 # Conditional scrolling allocations
+
+This composed deployment candidate is based on `1845885e`, which predates
+server-side title bars. It reports `title_bar_height: 0`, with identical target
+tile/content boxes. The layout-state wire contract is otherwise the same as the
+upstream-based control implementation. Only this event family was added; newer
+upstream output/layer event families were not imported. Committed-size changes
+schedule snapshots after client redraw, independently of target arrangement.
 
 `{"cmd":"layout-state"}` (CLI: `umbriel layout-state --json`) returns the
 version-1 layout snapshot. Subscribe with

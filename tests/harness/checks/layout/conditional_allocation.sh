@@ -3,12 +3,7 @@
 # rejects stale/invalid writes before mutation, and reports target vs committed geometry.
 set -euo pipefail
 
-cat >> "$UMBRIEL_CONFIG" <<'CONFIG'
-[[window_rule]]
-match.title = "^allocation-"
-title_bar = "forced"
-CONFIG
-"$UMBRIEL" msg config-reload >/dev/null
+# This composed base has no server-side title-bar feature.
 
 python3 - <<'PY'
 import copy, json, os, socket, subprocess, time
@@ -52,7 +47,7 @@ for i in range(3):
 
 baseline = group()
 assert baseline['basis']['supported'], baseline
-assert all(m['title_bar_height'] > 0 for m in baseline['basis']['members'])
+assert all(m['title_bar_height'] == 0 for m in baseline['basis']['members'])
 active = state()['active']
 assert active in [m['id'] for m in baseline['basis']['members']]
 subscription = socket.socket(socket.AF_UNIX)
@@ -78,7 +73,9 @@ settled()
 assert [g['committed_content']['height'] for g in group()['geometry']] == content
 while True:
     event = json.loads(events.readline())
-    if any(c['basis'] == accepted['accepted']['basis'] for c in event['data']['columns']):
+    if any(c['basis'] == accepted['accepted']['basis']
+           and [g['committed_content']['height'] for g in c['geometry']] == content
+           for c in event['data']['columns']):
         break
 
 # A stale baseline cannot overwrite our own accepted write.

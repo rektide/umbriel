@@ -1,6 +1,5 @@
 #include "layout/scrolling.h"
 #include "output/output.h"
-#include "scene/ssd_frame_geometry.h"
 #include "server/ipc_commands.h"
 #include "server/server.h"
 #include "view/view.h"
@@ -54,7 +53,9 @@ namespace umbriel {
       for (const View* view : column.views) {
         const auto constraints = scrolling.constraintsFor(view);
         const auto target = preview.targetBox(view);
-        const auto content = contentBoxInTile(target, view->titleBarHeight());
+        // This composed base predates server-side title bars. Native tile and
+        // client-content boxes coincide; do not import the unrelated SSD stack.
+        const auto content = target;
         supported = supported
             && view->mapped()
             && view->tiled()
@@ -65,7 +66,7 @@ namespace umbriel {
             && !view->pinned();
         members.push_back(
             {{"id", id(view)},
-             {"title_bar_height", view->titleBarHeight()},
+             {"title_bar_height", 0},
              {"constraints",
               {{"min_width", constraints.minWidth},
                {"min_height", constraints.minHeight},
@@ -234,7 +235,7 @@ namespace umbriel {
         return failure("invalid target extents");
       }
       for (size_t i = 0; i < members.size(); ++i) {
-        const auto content = contentBoxInTile(proposed.targetBox(members[i]), members[i]->titleBarHeight());
+        const auto content = proposed.targetBox(members[i]);
         const int actual = workspace.scrollingVertical() ? content.width : content.height;
         if (!extents[i].is_number_integer() || extents[i] != actual) {
           return failure("target extents not representable");
