@@ -21,6 +21,7 @@ Replies use `{"ok": ...}` or `{"err": "..."}`.
 | --- | --- |
 | `{"cmd":"effects"}` | `umbriel effects --json` |
 | `{"cmd":"windows"}` | `umbriel windows --json` |
+| `{"cmd":"layout-state"}` | `umbriel layout-state --json` — [conditional allocation](layout-control.md) |
 | `{"cmd":"workspaces"}` | `umbriel workspaces --json` |
 | `{"cmd":"submap"}` | `umbriel submap --json` |
 | `{"cmd":"layers"}` | `umbriel layers --json` |

@@ -1378,7 +1378,9 @@ namespace umbriel {
     }
     double total = top + bottom;
     for (double weight : weights) {
-      if (!std::isfinite(weight) || weight < kMinHeightWeight) {
+      // Native tab dissolution can leave raw weights below the effective layout
+      // floor. Preserve that state for restoration; arrange applies the floor.
+      if (!std::isfinite(weight) || weight <= 0.0) {
         return false;
       }
       total += weight;
