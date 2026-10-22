@@ -63,6 +63,37 @@ namespace {
 } // namespace
 
 // column bookkeeping
+UMBRIEL_TEST(conditionalColumnWeightsAreAtomicAndRoundTripPixels) {
+  for (const auto direction : {ScrollingDirection::Horizontal, ScrollingDirection::Vertical}) {
+    Fixture fixture(direction);
+    auto& layout = fixture.layout;
+    layout.insertView(stub(0), 0);
+    layout.insertViewIntoColumn(stub(1), 0, 1);
+    layout.insertViewIntoColumn(stub(2), 0, 2);
+    layout.arrange(kUsable);
+    const Column baseline = layout.columns()[0];
+    const int span = direction == ScrollingDirection::Horizontal ? 676 : 1236;
+    const std::array<double, 3> pixels{300, 200, static_cast<double>(span - 530)};
+    CHECK(layout.setColumnWeights(0, pixels, 10, 20));
+    layout.arrange(kUsable);
+    for (size_t i = 0; i < pixels.size(); ++i) {
+      const auto target = layout.targetBox(stub(static_cast<int>(i)));
+      CHECK_EQ(direction == ScrollingDirection::Horizontal ? target.height : target.width, static_cast<int>(pixels[i]));
+    }
+    const Column assigned = layout.columns()[0];
+    const std::array<double, 3> invalid{400, -1, 200};
+    CHECK(!layout.setColumnWeights(0, invalid, 0, 0));
+    CHECK_EQ(layout.columns()[0].heightWeights, assigned.heightWeights);
+    CHECK_EQ(layout.columns()[0].topGapWeight, assigned.topGapWeight);
+    CHECK(!layout.setColumnWeights(0, pixels, INFINITY, 0));
+    CHECK(layout.setColumnWeights(0, baseline.heightWeights, baseline.topGapWeight, baseline.bottomGapWeight));
+    CHECK_EQ(layout.columns()[0].heightWeights, baseline.heightWeights);
+    CHECK_EQ(layout.columns()[0].bottomGapWeight, baseline.bottomGapWeight);
+    CHECK(layout.setTabbed(stub(0), true));
+    CHECK(!layout.setColumnWeights(0, pixels, 0, 0));
+  }
+}
+
 UMBRIEL_TEST(insertAndRemoveTracksColumns) {
   Fixture fixture;
   fixture.addColumns(3);

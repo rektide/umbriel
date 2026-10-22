@@ -1898,6 +1898,7 @@ namespace umbriel {
     server->m_ipcWorkspacesIdle = nullptr;
     if (server->m_ipc != nullptr) {
       server->m_ipc->notifyWorkspacesChanged();
+      server->m_ipc->notifyLayoutStateChanged();
     }
   }
 

@@ -12,6 +12,8 @@ namespace umbriel {
   class Server;
 
   struct IpcCommands {
+    static nlohmann::json layoutState(Server& server, std::string_view arg);
+    static nlohmann::json layoutAllocate(Server& server, const nlohmann::json& request);
     static nlohmann::json keyboardLayouts(Server& server, std::string_view arg);
     [[nodiscard]] static std::optional<float> parseAudioLevel(const nlohmann::json& request);
     static nlohmann::json effects(Server& server, std::string_view arg);

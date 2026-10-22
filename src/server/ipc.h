@@ -21,7 +21,7 @@ namespace umbriel {
   public:
     // One bit per subscribable event name; the subscribe request ORs the bits it asked for into the connection. Keep
     // the names below in sync with the event builders in ipc.cpp.
-    enum : uint8_t {
+    enum : uint16_t {
       kEventTheme = 1 << 0,
       kEventOverview = 1 << 1,
       kEventKeyboardLayout = 1 << 2,
@@ -29,13 +29,14 @@ namespace umbriel {
       kEventWorkspaces = 1 << 4,
       kEventSubmap = 1 << 5,
       kEventScreenCast = 1 << 6,
+      kEventLayoutState = 1 << 7,
     };
     // Number of bits above; sizes the last-broadcast cache.
-    static constexpr size_t kEventCount = 7;
+    static constexpr size_t kEventCount = 8;
     // Subscribable names in bit order: the subscribe handler matches against this table and `umbriel subscribe`
     // lists it, so a new family cannot be accepted by one and unknown to the other.
     static constexpr std::array<std::string_view, kEventCount> kEventNames = {
-        "theme", "overview", "keyboard_layout", "windows", "workspaces", "submap", "screencast"
+        "theme", "overview", "keyboard_layout", "windows", "workspaces", "submap", "screencast", "layout-state"
     };
 
     Ipc(Server& server, const std::string& waylandSocketName);
@@ -51,6 +52,7 @@ namespace umbriel {
     void notifyWorkspacesChanged();
     void notifySubmapChanged();
     void notifyScreenCastChanged();
+    void notifyLayoutStateChanged();
     // End of an output frame: answers frame waits (settle, clock-advance) once every output has drawn a frame.
     void notifyOutputFrame(const Output& output);
 
@@ -67,7 +69,7 @@ namespace umbriel {
       wl_event_source* deadline = nullptr;
       bool responding = false;
       bool screenCastActive = false;
-      uint8_t subscribedEvents = 0;
+      uint16_t subscribedEvents = 0;
       // A frame wait holds its reply until these outputs have each drawn a frame, and for settle until the server is
       // settled as well.
       FrameWait frameWait = FrameWait::None;
@@ -90,7 +92,7 @@ namespace umbriel {
     std::optional<std::string> handleRequest(Connection& connection, std::string_view line);
     void beginFrameWait(Connection& connection, FrameWait wait, std::string reply);
     void finishFrameWait(Connection& connection, std::string response);
-    void broadcastEvent(uint8_t event, const nlohmann::json& payload);
+    void broadcastEvent(uint16_t event, const nlohmann::json& payload);
     void refreshScreenCastActive();
     void dropAudioOwner();
 

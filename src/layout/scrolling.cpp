@@ -1357,6 +1357,36 @@ namespace umbriel {
     return std::max(kMinHeightWeight, heightWeight(columnIndex, row)) / columnTotalWeight(column);
   }
 
+  bool ScrollingLayout::setColumnWeights(int columnIndex, std::span<const double> weights, double top, double bottom) {
+    if (columnIndex < 0 || columnIndex >= static_cast<int>(m_columns.size())) {
+      return false;
+    }
+    Column& column = m_columns[static_cast<size_t>(columnIndex)];
+    if (!column.tabs.empty()
+        || weights.size() != column.views.size()
+        || weights.empty()
+        || !std::isfinite(top)
+        || !std::isfinite(bottom)
+        || top < 0.0
+        || bottom < 0.0) {
+      return false;
+    }
+    double total = top + bottom;
+    for (double weight : weights) {
+      if (!std::isfinite(weight) || weight < kMinHeightWeight) {
+        return false;
+      }
+      total += weight;
+    }
+    if (!std::isfinite(total)) {
+      return false;
+    }
+    column.heightWeights.assign(weights.begin(), weights.end());
+    column.topGapWeight = top;
+    column.bottomGapWeight = bottom;
+    return true;
+  }
+
   bool ScrollingLayout::setHeightFraction(View* view, double fraction) {
     const int columnIndex = columnOf(view);
     if (columnIndex < 0) {

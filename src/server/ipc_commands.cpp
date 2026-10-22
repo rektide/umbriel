@@ -1040,6 +1040,8 @@ namespace umbriel {
        &IpcCommands::effects, &printEffects},
       {"windows", "", "list windows (app id and title)", IpcCommandGroup::Inspect, false, &IpcCommands::windows,
        &printWindows},
+      {"layout-state", "", "inspect conditional scrolling allocation state", IpcCommandGroup::Inspect, false,
+       &IpcCommands::layoutState, nullptr},
       {"workspaces", "", "list workspaces and their layouts", IpcCommandGroup::Inspect, false, &IpcCommands::workspaces,
        &printWorkspaces},
       {"submap", "", "show the active keybind submap", IpcCommandGroup::Inspect, false, &IpcCommands::submap,
