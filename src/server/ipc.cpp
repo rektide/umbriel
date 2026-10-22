@@ -522,6 +522,9 @@ namespace umbriel {
       return R"({"err":"malformed request"})";
     }
     const std::string cmd = req["cmd"].get<std::string>();
+    if (cmd == "layout-allocate") {
+      return IpcCommands::layoutAllocate(*m_server, req).dump();
+    }
     if (cmd == "screencast-session") {
       const auto active = req.find("active");
       if (active == req.end() || !active->is_boolean()) {
@@ -580,6 +583,9 @@ namespace umbriel {
       }
       if ((requested & Ipc::kEventWindows) != 0) {
         append(windowsEvent(*m_server));
+      }
+      if ((requested & Ipc::kEventLayoutState) != 0) {
+        append(nlohmann::json{{"event", "layout-state"}, {"data", IpcCommands::layoutState(*m_server, {})["ok"]}});
       }
       if ((requested & Ipc::kEventWorkspaces) != 0) {
         append(workspacesEvent(*m_server));
@@ -693,7 +699,17 @@ namespace umbriel {
     }
   }
 
-  void Ipc::notifyWindowsChanged() { broadcastEvent(kEventWindows, windowsEvent(*m_server)); }
+  void Ipc::notifyWindowsChanged() {
+    broadcastEvent(kEventWindows, windowsEvent(*m_server));
+    notifyLayoutStateChanged();
+  }
+
+  void Ipc::notifyLayoutStateChanged() {
+    broadcastEvent(
+        kEventLayoutState,
+        nlohmann::json{{"event", "layout-state"}, {"data", IpcCommands::layoutState(*m_server, {})["ok"]}}
+    );
+  }
 
   void Ipc::notifyWorkspacesChanged() { broadcastEvent(kEventWorkspaces, workspacesEvent(*m_server)); }
 

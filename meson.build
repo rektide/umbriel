@@ -823,6 +823,7 @@ core_sources = files(
   'src/cli/ipc_client.cpp',
   'src/server/ipc.cpp',
   'src/server/ipc_commands.cpp',
+  'src/server/ipc_layout.cpp',
 )
 
 umbriel_core_deps = [
