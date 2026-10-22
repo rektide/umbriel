@@ -45,10 +45,8 @@ namespace umbriel {
       const bool vertical = workspace.scrollingVertical();
       const auto area = workspace.tiledArea();
       const int cross = std::max(1, (vertical ? area.width : area.height) - 2 * config.edgePad);
-      const int span = std::max(
-          static_cast<int>(column.views.size()),
-          cross - std::max(0, static_cast<int>(column.views.size()) - 1) * config.totalGap
-      );
+      const int units = static_cast<int>(column.tabs.unitCount(column.views.size()));
+      const int span = std::max(units, cross - std::max(0, units - 1) * config.totalGap);
       Json members = Json::array();
       Json geometry = Json::array();
       bool supported =
@@ -63,7 +61,8 @@ namespace umbriel {
             && !id(view).empty()
             && !view->scheduledFullscreen()
             && !view->scheduledMaximized()
-            && !view->maximizedToEdges();
+            && !view->maximizedToEdges()
+            && !view->pinned();
         members.push_back(
             {{"id", id(view)},
              {"title_bar_height", view->titleBarHeight()},
@@ -85,8 +84,8 @@ namespace umbriel {
         );
       }
       double total = column.topGapWeight + column.bottomGapWeight;
-      for (double value : column.heightWeights) {
-        total += std::max(0.05, value);
+      for (size_t row = 0; row < column.heightWeights.size(); row = column.tabs.unitEnd(row)) {
+        total += std::max(0.05, column.heightWeights[row]);
       }
       const int top = total > 0 ? static_cast<int>(std::lround(column.topGapWeight / total * span)) : 0;
       const int bottom = total > 0 ? static_cast<int>(std::lround(column.bottomGapWeight / total * span)) : 0;
@@ -95,6 +94,7 @@ namespace umbriel {
       Json basis{
           {"instance", instance()},
           {"workspace", workspace.id()},
+          {"output", workspace.group()->output()->wlr()->name},
           {"column", index},
           {"axis", vertical ? "horizontal" : "vertical"},
           {"members", std::move(members)},
@@ -183,6 +183,9 @@ namespace umbriel {
       return failure("layout target unavailable");
     }
     auto& workspace = *target->workspace();
+    if (workspace.group() == nullptr || workspace.group()->output() == nullptr) {
+      return failure("layout output unavailable");
+    }
     auto* scrolling = workspace.scrollingLayout();
     if (scrolling == nullptr || scrolling->columnOf(target) < 0) {
       return failure("unsupported layout");

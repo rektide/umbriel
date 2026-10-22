@@ -89,6 +89,9 @@ UMBRIEL_TEST(conditionalColumnWeightsAreAtomicAndRoundTripPixels) {
     CHECK(layout.setColumnWeights(0, baseline.heightWeights, baseline.topGapWeight, baseline.bottomGapWeight));
     CHECK_EQ(layout.columns()[0].heightWeights, baseline.heightWeights);
     CHECK_EQ(layout.columns()[0].bottomGapWeight, baseline.bottomGapWeight);
+    const std::array<double, 3> subfloorBaseline{0.025, 1, 1};
+    CHECK(layout.setColumnWeights(0, subfloorBaseline, 0, 0));
+    CHECK_EQ(layout.columns()[0].heightWeights[0], 0.025);
     CHECK(layout.setTabbed(stub(0), true));
     CHECK(!layout.setColumnWeights(0, pixels, 0, 0));
   }

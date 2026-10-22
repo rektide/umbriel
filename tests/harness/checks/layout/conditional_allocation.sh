@@ -3,6 +3,13 @@
 # rejects stale/invalid writes before mutation, and reports target vs committed geometry.
 set -euo pipefail
 
+cat >> "$UMBRIEL_CONFIG" <<'CONFIG'
+[[window_rule]]
+match.title = "^allocation-"
+title_bar = "forced"
+CONFIG
+"$UMBRIEL" msg config-reload >/dev/null
+
 python3 - <<'PY'
 import copy, json, os, socket, subprocess, time
 
@@ -45,6 +52,7 @@ for i in range(3):
 
 baseline = group()
 assert baseline['basis']['supported'], baseline
+assert all(m['title_bar_height'] > 0 for m in baseline['basis']['members'])
 active = state()['active']
 assert active in [m['id'] for m in baseline['basis']['members']]
 subscription = socket.socket(socket.AF_UNIX)
@@ -103,15 +111,21 @@ assert request(dict(write, expected=current))['err'] == 'active window changed'
 assert group()['basis'] == current
 
 # Restore by original native weights, against the last accepted/current basis, with no focus predicate.
+action('workspace-switch:2')
+settled()
+inactive_focus = state()['active']
+active_workspaces = [w['id'] for w in ok({'cmd': 'workspaces'}) if w['active']]
 restore = {'cmd': 'layout-allocate', 'target': active, 'expected': current, 'weights': baseline['basis']['weights']}
 restored = ok(restore)
 assert restored['accepted']['basis']['weights'] == baseline['basis']['weights']
-assert state()['active'] == other
+assert state()['active'] == inactive_focus
+assert [w['id'] for w in ok({'cmd': 'workspaces'}) if w['active']] == active_workspaces
 settled()
 assert [g['target_content'] for g in group()['geometry']] == [g['target_content'] for g in baseline['geometry']]
 
 # Topology changes invalidate a retained basis.
 retained = group()['basis']
+action('window-focus:' + other)
 action('window-consume-or-expel-right')
 settled()
 assert 'err' in request(dict(restore, expected=retained))
