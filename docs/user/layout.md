@@ -107,6 +107,8 @@ default_extent_fraction = 0.5
 center_underfull_strip = true
 center_focused = "never"
 center_on_overview_select = false
+reveal_padding = 100
+snap_padding = 100
 ```
 
 | Key                         | Default   | Description                                                                                                                                   |
@@ -115,6 +117,8 @@ center_on_overview_select = false
 | `center_underfull_strip`    | `true`    | Center a strip narrower than the viewport.                                                                                                    |
 | `center_focused`            | `"never"` | Use `"never"`, `"always"`, or `"on_overflow"` to control focus centering.                                                                     |
 | `center_on_overview_select` | `false`   | Center the column picked in the overview on close, like `column-center`, whatever `center_focused` says.                                      |
+| `reveal_padding`            | `0`       | Minimum logical px between a focus-revealed column and the viewport edge it enters from; `0` lands flush. The packaged config uses `100`.     |
+| `snap_padding`              | `0`       | Minimum logical px between a snapped column's leading edge and the start edge; `0` snaps flush. The packaged config uses `100`.               |
 
 ### Horizontal and vertical scrolling
 
@@ -147,6 +151,8 @@ During an application drag-and-drop operation, holding the pointer near either e
 Rearranging a tiled window by dragging it (Mod+left-click or its tab) pans the strip the same way, reaching columns beyond the current scroll extent. The trigger zone, delay, and speed are set in [Drag edge scroll](input.md#drag-edge-scroll).
 
 With `center_focused = "on_overflow"`, a column is centered when it and the neighbor focus came from cannot share the viewport, and a width change that makes them fit puts the pair back side by side at the edge focus came from. Closing the focused column or sending it to another workspace runs the same rule with the column that took its place. Moving or resizing the focused column does too, as does going fullscreen or maximized to edges. A lone column has no such pair, so it never centers itself; `center_underfull_strip` decides where it rests.
+
+Without a centering policy, focus reveals keep at least `reveal_padding` logical pixels between the revealed column and the viewport edge it enters from, so the strip's continuation stays visible beyond it; with the default `0` the column lands flush. Overview activation, fullscreen exit, and re-tiling snap the column back with its leading edge `snap_padding` pixels from the start edge. The strip's scroll bounds still apply: a column at either end rests flush when no content remains beyond it. A column wider than the viewport pans instead, so neither padding parks it.
 
 Closing a focused column moves focus to the nearest surviving column. When that column contains stacked windows, Umbriel restores its most recently focused member instead of always selecting its first row.
 
