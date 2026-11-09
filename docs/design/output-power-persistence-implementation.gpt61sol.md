@@ -31,6 +31,8 @@ sources:
 
 # Output power memory — implementation and remaining gaps
 
+Follow-up: [output power protocol support](output-power-protocol-implementation.gpt61sol.md) is now implemented in this checkout. This report's original verification and integration deferral describe the memory-only checkpoint; the follow-up report records protocol work and the consumer limitations that remain.
+
 ## Implemented contract
 
 The implementation follows the brief's pragmatic addendum: a small in-memory off-choice store, constructor seeding before the first configured commit, and invalidation at existing success boundaries. It adds no timers, firmware rules, restore gate, resident logical outputs, or general state framework. The original brief and appraisal remain design evidence; this report describes the implemented choice, not a deployment claim.

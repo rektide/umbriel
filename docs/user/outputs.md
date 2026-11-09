@@ -382,6 +382,10 @@ umbriel msg dpms-on DP-1
 
 The bare actions target every configured output. Input wakes all monitors when every output is powered off. Outputs disabled with `enabled = false` are not affected. DPMS does not remove an output from the logical desktop, move its windows, or exclude it from a whole-desktop capture.
 
+Idle daemons and desktop shells can use version 1 of `wlr-output-power-management-unstable-v1` through the `zwlr_output_power_manager_v1` global. Protocol requests use the same DPMS state and reconnect memory as the IPC actions. A power control reports initial physical power and committed enabled-state changes, including IPC, input wake, and logical output configuration changes. Each output permits one protocol controller at a time.
+
+A protocol request cannot logically re-enable a disabled output. Rejected requests, failed power commits, and already-satisfied requests do not necessarily receive an acknowledgement or `failed` event; they do not report a speculative mode change. Output destruction invalidates its control, so clients must follow registry removal and bind a new control when an output becomes discoverable again.
+
 Power-off is remembered for the current session when the same monitor reconnects on the same connector. A changed reported monitor identity or connector starts powered on, subject to logical enablement policy. A physical disconnect still evacuates windows once; they return when the monitor powers on, not on each dark reconnect. Input during an all-dark session and bare `dpms-on` also forget power-off requests for disconnected monitors. Bare `dpms-on` succeeds even with no connected outputs.
 
 A cold reconnect can remain unavailable to Wayland clients until it is powered on. Use compositor input wake or `umbriel msg dpms-on` to wake it. Changing output-state configuration forgets reconnect power memory but does not immediately wake live DPMS-off outputs; unchanged, unrelated, and failed reloads preserve it.
