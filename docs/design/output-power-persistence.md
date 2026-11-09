@@ -205,3 +205,118 @@ studies cited above (source verification across the deployed, ARCH, upstream,
 and series trees), live tests of 2026-11-08 (DDC `0xD6` probe; controlled
 bounce re-test), overnight journals of 2026-11-03/05, and the afk-staged-idle
 bead notes.
+
+## Addendum — pragmatic posture after appraisal (2026-11-09)
+
+The [implementation appraisal](output-power-persistence-review0.gpt61sol.md)
+revised this brief's assumptions: part 2 is already enforced by restoration
+eligibility, part 3 is not automatic on a cold reconnect, and the write/clear
+model has more boundaries than `setPowered` alone. This addendum records the
+desired posture and a provisional implementation take. It is **provisional** —
+a recommendation from the writing session, not an accepted revision. The
+sections above remain the reviewed brief until the operator signs this posture
+on.
+
+### Intent
+
+The smallest mechanism that stops the relight and the per-pulse window churn:
+fail-lit everywhere, no new wake policy, no timers or cycle counters, no
+state framework. The operator's stated desire is to avoid an extremely tight
+but convoluted system built for extreme soundness — where a rule's protection
+can be had cheaper by letting a stale record expire harmlessly, prefer that.
+
+A code reading of the appraisal's named sites supports this: nearly every
+"tight" rule lands on a boundary the compositor already maintains. The
+appraisal's complexity is mostly *descriptive* — an inventory of existing
+paths that touch `m_dpmsOff` — not new machinery the patch must build. The
+rules that would be genuinely expensive are exactly the ones whose failure
+mode without them is a self-healing fail-lit window.
+
+### Provisional take (v1)
+
+- **Store:** an `OutputPowerOverrides` with strict connector + descriptor
+  equality only — no migration, no ambiguity learning. Simpler than
+  `OutputEnableOverrides` (~35 lines; the `outputNamesEqual` /
+  `outputDescriptor` helpers and their tests already exist). Connector-only
+  keying was considered and rejected: it saves ~10 lines and buys the
+  monitor-swap misidentification the appraisal's probe demonstrated.
+- **Seed:** `m_dpmsOff` from the store in the `Output` constructor, beside the
+  existing `initialOutputEnabled` consultation (`src/output/output.cpp:187`),
+  so the first commit is `enabled=false` — no modeset, no flash.
+- **Write point:** `setPowered`, after a successful commit (the speculative
+  set/rollback at `output.cpp:1220–1224` already provides commit gating).
+  Also clear on the idempotent already-on early return (`1214–1217`) so stale
+  memory cannot outlive an explicit power-on.
+- **Logical-transition invalidation rides existing boundaries:** beside
+  `rememberOutputEnableOverride`/`adoptOutputManagerEnabled` in the committed
+  `ok && !testOnly` loop (`src/server/server_events.cpp:4163–4165`), and
+  inside the existing `m_dpmsOff = false` conditions of
+  `adoptOutputManagerEnabled` and `applyOutputState` success paths. Test-only
+  requests, failed commits, and geometry-only transactions preserve memory
+  because those boundaries already make precisely those distinctions.
+- **Wake:** coarse clear — clear the whole store at entry to the all-dark
+  branch of `wakeDpmsOutputs` (`server_events.cpp:2017–2028`). That branch
+  fires only when every desktop-enabled output is dark, i.e. the user has
+  returned; nothing worth preserving survives that moment.
+- **Reload:** clear the store beside `m_outputEnableOverrides.clear()` on
+  `effects.outputState` reloads (`server_events.cpp:837–842`). No live-flag
+  reset commit path in v1: live dark outputs keep their runtime flag until
+  wake; only reconnect behavior changes.
+- **Cold publication:** adopt the narrow policy *implicitly* and document it
+  as intended — a remembered-off output that reconnects cold has no
+  `wl_output` global until compositor-side wake (wlroots gives a mode-less
+  output no geometry, so this is the default, not something to build). The
+  management head keeps advertising logical enablement as today; transactions
+  against the cold dark head already fail cleanly through the sleeping-output
+  rejection path (`server_events.cpp:3908–3921`).
+- **Churn (former part 2):** no code. Restoration eligibility already excludes
+  physically disabled outputs (`outputFromName`, `preferredOutput`), so a
+  remembered-dark recreated output is never a restore target. This becomes a
+  test obligation, not a patch component.
+
+Estimated size: ~50–80 lines plus harness extensions, below the brief's
+original 60–150 estimate because part 2 collapsed into tests.
+
+### Deliberate deferrals (not silent omissions)
+
+- **Per-record wake invalidation** (appraisal finding 4: absent outputs expire
+  at wake; connected outputs clear only after successful commits) — replaced
+  by the coarse clear. Accepted window: a *failed* wake commit loses that
+  output's memory, so it relights on reconnect. Fail-lit, self-healing.
+- **Live-flag reset on reload** (finding 6). Accepted window: dark output +
+  output-policy reload + reconnect-before-wake lights that output once.
+- **Cold-head publication truthfulness** (finding 1's full decision:
+  withholding never-configured sleeping heads from management publication).
+  Status quo publication stands; revisit if a consumer trips on the
+  advertised-but-unconfigurable head.
+- **Mode-less harness output and the power-series client's hotplug rework** —
+  belong with the `pwr` series integration in `working`, not this branch.
+- **afk-dim consumer lifecycle and provider switch** — separate effort after
+  deploy, per the appraisal.
+
+### Kept tight
+
+- Fail-lit defaults: fresh sessions, first-ever appearance, and explicit
+  configuration boundaries start lit.
+- Constructor seeding before the first `applyConfiguredState` commit.
+- The all-dark wake rule itself; deliberate partial-off survives ordinary
+  input.
+- Memory preservation on test-only/failed transactions — inherited from
+  existing boundaries at zero new code.
+
+### Open questions after this addendum
+
+1. Unchanged: whether the XV275K pulses indefinitely — answered by the
+   instrumented night after landing.
+2. Publication — provisionally answered above (narrow, implicit); confirm with
+   the operator.
+3. Wake-rule refinement — unchanged, deferred.
+4. `setPowered` early-out ordering — resolved by writing post-commit and
+   clearing on the idempotent return.
+
+Addendum provenance: written 2026-11-09 by model:zai-coding-plan/glm-5.3#max,
+OpenCode session `ses_e40fc4ef3ffehmD7cxRyRYktS0`, after evaluating the
+appraisal's named code sites in this workspace (`src/output/output.cpp`,
+`src/output/enable_overrides.cpp`, `src/server/server_events.cpp`,
+`src/server/server_outputs.cpp`). Status: provisional, awaiting operator
+acceptance; supersedes nothing until accepted.
