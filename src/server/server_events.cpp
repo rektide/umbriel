@@ -1919,6 +1919,18 @@ namespace umbriel {
     }
   }
 
+  void Server::onOutputPowerSetMode(wl_listener* listener, void* data) {
+    Server* self;
+    self = wl_container_of(listener, self, m_outputPowerSetMode);
+    auto* event = static_cast<wlr_output_power_v1_set_mode_event*>(data);
+    // Share DPMS commit/rollback and session memory. wlroots reports physical
+    // enabled-state commits, including changes initiated outside this protocol.
+    if (Output* output = self->outputFromWlr(event->output);
+        output != nullptr && !output->setPowered(event->mode == ZWLR_OUTPUT_POWER_V1_MODE_ON)) {
+      kLog.debug("output '{}': protocol power request left power unchanged", event->output->name);
+    }
+  }
+
   void Server::handleWorkspaceCommit(void* data) {
     auto* event = static_cast<wlr_ext_workspace_v1_commit_event*>(data);
     wlr_ext_workspace_v1_request* request = nullptr;
