@@ -1432,6 +1432,126 @@ UMBRIEL_TEST(ensureVisibleKeepsAFlushLeftColumnInPlace) {
   CHECK_EQ(fixture.layout.scrollAmountToEnsureVisible(1, kViewport), 0.0);
 }
 
+// reveal/snap padding
+UMBRIEL_TEST(revealPaddingKeepsRoomBeyondARightEntry) {
+  Fixture fixture;
+  fixture.config.scrolling.revealPadding = 100;
+  fixture.addColumns(6);
+
+  fixture.layout.setScroll(0);
+  fixture.layout.ensureVisible(2, kViewport);
+
+  const int right = fixture.layout.columnX(2, kViewport) + fixture.layout.columnWidth(2, kViewport);
+  CHECK_EQ(fixture.layout.scroll(), static_cast<double>(right + 100 - kViewport));
+}
+
+UMBRIEL_TEST(revealPaddingKeepsRoomBeforeALeftEntry) {
+  Fixture fixture;
+  fixture.config.scrolling.revealPadding = 100;
+  fixture.addColumns(6);
+
+  fixture.layout.setScroll(static_cast<double>(fixture.layout.maxScroll(kViewport)));
+  fixture.layout.ensureVisible(1, kViewport);
+
+  CHECK_EQ(fixture.layout.scroll(), static_cast<double>(fixture.layout.columnX(1, kViewport) - 100));
+}
+
+UMBRIEL_TEST(revealPaddingClampsAtTheStripBounds) {
+  // Padding only applies while content remains beyond the landing: the last
+  // column rests flush at the strip end and the first rests flush at the start.
+  Fixture fixture;
+  fixture.config.scrolling.revealPadding = 100;
+  fixture.addColumns(6);
+
+  fixture.layout.setScroll(0);
+  fixture.layout.ensureVisible(5, kViewport);
+  CHECK_EQ(fixture.layout.scroll(), static_cast<double>(fixture.layout.maxScroll(kViewport)));
+
+  fixture.layout.setScroll(500);
+  fixture.layout.ensureVisible(0, kViewport);
+  CHECK_EQ(fixture.layout.scroll(), 0.0);
+}
+
+UMBRIEL_TEST(revealPaddingZeroLandsFlush) {
+  // The shipped default keeps the legacy landing: flush against the entered edge.
+  Fixture fixture;
+  fixture.addColumns(6);
+
+  fixture.layout.setScroll(0);
+  fixture.layout.ensureVisible(2, kViewport);
+
+  const int right = fixture.layout.columnX(2, kViewport) + fixture.layout.columnWidth(2, kViewport);
+  CHECK_EQ(fixture.layout.scroll(), static_cast<double>(right - kViewport));
+}
+
+UMBRIEL_TEST(revealPaddingFeedsTheScrollAnimationAmount) {
+  Fixture fixture;
+  fixture.config.scrolling.revealPadding = 100;
+  fixture.addColumns(6);
+
+  fixture.layout.setScroll(0);
+  const int right = fixture.layout.columnX(2, kViewport) + fixture.layout.columnWidth(2, kViewport);
+  CHECK_EQ(
+      fixture.layout.scrollAmountToEnsureVisible(2, kViewport), static_cast<double>(right + 100 - kViewport) / kViewport
+  );
+}
+
+UMBRIEL_TEST(centerFocusedWinsOverRevealPadding) {
+  Fixture fixture;
+  fixture.config.scrolling.centerFocused = CenterFocusedColumn::Always;
+  fixture.config.scrolling.revealPadding = 100;
+  fixture.addColumns(3);
+
+  fixture.layout.ensureVisible(1, kViewport);
+
+  const int centeredX = fixture.layout.columnX(1, kViewport)
+      + fixture.layout.columnWidth(1, kViewport) / 2
+      - static_cast<int>(std::lround(fixture.layout.scroll()));
+  CHECK_EQ(centeredX, kViewport / 2);
+}
+
+UMBRIEL_TEST(snapPaddingOffsetsTheLeadingEdgeFromTheStart) {
+  Fixture fixture;
+  fixture.config.scrolling.snapPadding = 100;
+  fixture.addColumns(6);
+  constexpr int column = 3;
+
+  fixture.layout.setScroll(0);
+  fixture.layout.snapVisible(column, kViewport);
+
+  CHECK_EQ(fixture.layout.scroll(), static_cast<double>(fixture.layout.columnX(column, kViewport) - 100));
+}
+
+UMBRIEL_TEST(snapPaddingClampsAtTheStripStart) {
+  // The first column cannot leave room before itself; it snaps flush.
+  Fixture fixture;
+  fixture.config.scrolling.snapPadding = 100;
+  fixture.addColumns(3);
+
+  fixture.layout.setScroll(500);
+  fixture.layout.snapVisible(0, kViewport);
+  CHECK_EQ(fixture.layout.scroll(), 0.0);
+}
+
+UMBRIEL_TEST(paddingNeverParksAWidePannableColumn) {
+  // A column wider than the viewport is read through panning, and the pan rule owns it even for a forced snap, so
+  // neither padding may re-park it while the viewport already lies inside it.
+  Fixture fixture;
+  fixture.config.scrolling.revealPadding = 100;
+  fixture.config.scrolling.snapPadding = 100;
+  fixture.addColumns(3);
+  constexpr int wide = 1;
+  CHECK(fixture.layout.setWidthFraction(wide, 2.0));
+
+  const double panned = 700.0;
+  fixture.layout.setScroll(panned);
+  fixture.layout.ensureVisible(wide, kViewport);
+  CHECK_EQ(fixture.layout.scroll(), panned);
+
+  fixture.layout.snapVisible(wide, kViewport);
+  CHECK_EQ(fixture.layout.scroll(), panned);
+}
+
 UMBRIEL_TEST(centerColumnLetsTheFirstColumnRestPastStripStart) {
   Fixture fixture;
   fixture.addColumns(3);
