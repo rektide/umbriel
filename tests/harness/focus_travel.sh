@@ -114,13 +114,13 @@ setup_focus_columns() {
   "$UMBRIEL" msg config-reload > /dev/null
   for title in A B C D; do spawn_titled "$title"; sleep 0.45; done
   wait_for_count 4
-  "$UMBRIEL" msg "window-focus:$(id_of A)" > /dev/null
-  sleep 0.3
+  "$UMBRIEL" msg window-focus "$(id_of A)" > /dev/null
+  sleep 0.3 # real time: the initial focus-reveal pan must settle before the baseline probe
   warmup
   settled_shot "$UMBRIEL_RUNTIME_DIR/setup.png"
 }
 start_focus_journey() {
-  "$UMBRIEL" msg "window-focus:$(id_of D)" > /dev/null
-  sleep 0.5
+  "$UMBRIEL" msg window-focus "$(id_of D)" > /dev/null
+  sleep 0.5 # real time: sample the ring mid-journey, with the 1500 ms pan still advancing
   assert_signal_retry "220x160+405+280" 0.005 "journey before interruption"
 }

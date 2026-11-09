@@ -4,11 +4,11 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../focus_travel.sh"
 configure_focus_travel
 setup_focus_columns
-"$UMBRIEL" msg "window-focus:$(id_of C)" > /dev/null
-sleep 0.3
+"$UMBRIEL" msg window-focus "$(id_of C)" > /dev/null
+sleep 0.3 # real time: the initial focus-reveal pan must settle before the baseline probe
 settled_shot "$UMBRIEL_RUNTIME_DIR/grab-setup.png"
-"$UMBRIEL" msg "window-focus:$(id_of B)" > /dev/null
-sleep 0.5
+"$UMBRIEL" msg window-focus "$(id_of B)" > /dev/null
+sleep 0.5 # real time: sample the ring mid-journey, with the 1500 ms pan still advancing
 assert_signal_retry "240x160+30+280" 0.004 "ring before destination grab"
 "$UMBRIEL_POINTER_CLIENT" 1280 720 mod logo move 200 360 press 272 pause 500 release 272 mod none \
   > "$UMBRIEL_RUNTIME_DIR/grab.log" 2>&1 &

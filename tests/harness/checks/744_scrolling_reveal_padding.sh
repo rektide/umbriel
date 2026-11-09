@@ -51,7 +51,7 @@ wait_for_x() {
 }
 
 focus_id() {
-  "$UMBRIEL" msg "window-focus:$1" > /dev/null
+  "$UMBRIEL" msg window-focus "$1" > /dev/null
 }
 
 # Spawned one at a time so the columns end up in a known left-to-right order:
@@ -89,7 +89,7 @@ wait_for_x E 1182 "E should keep peeking after the right-entry reveal"
 # Fullscreen round trip on D: the exit snap keeps 100 px before D's leading edge
 # instead of flush left. D.x = 10 + 1908 - 1808 = 110.
 "$UMBRIEL" msg window-toggle-fullscreen > /dev/null
-sleep 0.3
+sleep 0.3 # real time: the fullscreen-enter transition must land before the exit snap is measured
 "$UMBRIEL" msg window-toggle-fullscreen > /dev/null
 wait_for_x D 110 "fullscreen-exit snap should keep padding before D"
 

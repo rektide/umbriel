@@ -5,7 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../focus_travel.sh"
 configure_focus_travel
 setup_focus_columns
 start_focus_journey
-"$UMBRIEL" msg "window-close:$(id_of D)" > /dev/null
+"$UMBRIEL" msg window-close "$(id_of D)" > /dev/null
 wait_for_count 3
 sleep 0.15
 grim "$UMBRIEL_RUNTIME_DIR/removed.png"
