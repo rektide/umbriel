@@ -192,7 +192,7 @@ namespace umbriel {
     }
     updateSceneSdrWhite();
     if (desktopEnabled()) {
-      wlr_output_layout_output* layoutOutput = addToLayout();
+      wlr_output_layout_output* layoutOutput = addToLayout(true);
       wlr_scene_output_layout_add_output(m_server->sceneLayout(), layoutOutput, m_sceneOutput);
     }
     m_server->resolveOutputEffect(*this);
@@ -1124,12 +1124,45 @@ namespace umbriel {
     wlr_output_state_finish(&state);
   }
 
-  wlr_output_layout_output* Output::addToLayout() {
+  wlr_output_layout_output* Output::addToLayout(bool reconnecting) {
+    wlr_output_layout* layout = m_server->outputLayout();
     const OutputRule* rule = findOutputRule(config(), identity());
     if (rule != nullptr && rule->position) {
-      return wlr_output_layout_add(m_server->outputLayout(), m_output, (*rule->position)[0], (*rule->position)[1]);
+      wlr_output_layout_output* added =
+          wlr_output_layout_add(layout, m_output, (*rule->position)[0], (*rule->position)[1]);
+      m_server->rememberOutputArrangement();
+      return added;
     }
-    return wlr_output_layout_add_auto(m_server->outputLayout(), m_output);
+    // A fresh connection returns to the established arrangement. A re-apply on
+    // the same output (config reload, scale change) keeps using automatic
+    // placement, which re-packs the outputs to stay adjacent.
+    if (reconnecting) {
+      if (const auto remembered = m_server->rememberedOutputPosition(m_output->name != nullptr ? m_output->name : "")) {
+        // Auto-placed peers were re-packed while this output was gone; pin
+        // each one with a remembered position back where the arrangement had
+        // it. Manually placed peers keep the position they were given on
+        // purpose.
+        for (const auto& other : m_server->outputs()) {
+          wlr_output* wlrOther = other->wlr();
+          if (wlrOther == m_output || !wlrOther->enabled || !other->desktopEnabled()) {
+            continue;
+          }
+          wlr_output_layout_output* lo = wlr_output_layout_get(layout, wlrOther);
+          if (lo == nullptr || !lo->auto_configured) {
+            continue;
+          }
+          if (const auto spot = m_server->rememberedOutputPosition(wlrOther->name != nullptr ? wlrOther->name : "")) {
+            wlr_output_layout_add(layout, wlrOther, spot->first, spot->second);
+          }
+        }
+        wlr_output_layout_output* added = wlr_output_layout_add(layout, m_output, remembered->first, remembered->second);
+        m_server->rememberOutputArrangement();
+        return added;
+      }
+    }
+    wlr_output_layout_output* added = wlr_output_layout_add_auto(layout, m_output);
+    m_server->rememberOutputArrangement();
+    return added;
   }
 
   bool Output::applyOutputState() {
@@ -1161,7 +1194,7 @@ namespace umbriel {
       return false;
     }
     if (desktopEnabled()) {
-      wlr_output_layout_output* layoutOutput = addToLayout();
+      wlr_output_layout_output* layoutOutput = addToLayout(false);
       // Re-bind the scene output after a disable removed it from the layout.
       // No-op while it is still bound.
       wlr_scene_output_layout_add_output(m_server->sceneLayout(), layoutOutput, m_sceneOutput);
@@ -1194,6 +1227,7 @@ namespace umbriel {
     if (desktopEnabled()) {
       wlr_output_layout_output* layoutOutput = wlr_output_layout_add(m_server->outputLayout(), m_output, x, y);
       wlr_scene_output_layout_add_output(m_server->sceneLayout(), layoutOutput, m_sceneOutput);
+      m_server->rememberOutputArrangement();
     } else {
       wlr_output_layout_remove(m_server->outputLayout(), m_output);
     }

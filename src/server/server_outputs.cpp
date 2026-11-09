@@ -92,6 +92,29 @@ namespace umbriel {
     return false;
   }
 
+  void Server::rememberOutputArrangement() {
+    // Snapshot the placement as it stands after a deliberate change (initial
+    // placement, configuration, output management). Removal re-packing never
+    // runs through here, so the snapshot keeps the arrangement a monitor left
+    // behind when it dropped off, ready for its return.
+    for (const auto& output : m_outputs) {
+      wlr_output* wlrOutput = output->wlr();
+      if (wlrOutput->name == nullptr) {
+        continue;
+      }
+      if (wlr_output_layout_output* lo = wlr_output_layout_get(m_outputLayout, wlrOutput)) {
+        m_outputLayoutMemory[wlrOutput->name] = {lo->x, lo->y};
+      }
+    }
+  }
+
+  std::optional<std::pair<int, int>> Server::rememberedOutputPosition(const std::string& name) const {
+    if (const auto entry = m_outputLayoutMemory.find(name); entry != m_outputLayoutMemory.end()) {
+      return entry->second;
+    }
+    return std::nullopt;
+  }
+
   void Server::arrangeLayers(wlr_output* output) {
     if (Output* out = outputFromWlr(output)) {
       out->markDirty(Dirty::LayerArrange);
