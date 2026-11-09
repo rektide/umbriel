@@ -837,6 +837,7 @@ namespace umbriel {
       // temporary output-management choices, including overrides retained for
       // a currently disconnected monitor.
       m_outputEnableOverrides.clear();
+      m_outputPowerOverrides.clear();
       m_deferOutputManagerConfig = true;
       for (const auto& output : m_outputs) {
         (void)output->applyOutputState();
@@ -2021,6 +2022,9 @@ namespace umbriel {
     if (anyPowered) {
       return;
     }
+    // Returning input ends the all-dark request, including disconnected heads.
+    // Clear first: even a failed wake must allow a later reconnect to come up lit.
+    m_outputPowerOverrides.clear();
     for (const auto& output : m_outputs) {
       if (output->dpmsOff()) {
         (void)output->setPowered(true);
@@ -3865,6 +3869,14 @@ namespace umbriel {
 
   void Server::rememberOutputEnableOverride(const Output& output, bool enabled) {
     m_outputEnableOverrides.remember(output.identity(), enabled);
+  }
+
+  bool Server::initialOutputDpmsOff(const Output& output) const {
+    return m_outputPowerOverrides.isOff(output.identity());
+  }
+
+  void Server::rememberOutputPowerOverride(const Output& output, bool off) {
+    m_outputPowerOverrides.remember(output.identity(), off);
   }
 
   bool Server::commitOutputEnabled(Output& target, bool enabled) {

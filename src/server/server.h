@@ -10,6 +10,7 @@
 #include "input/shortcuts_inhibit.h"
 #include "input/surface_layouts.h"
 #include "output/enable_overrides.h"
+#include "output/power_overrides.h"
 #include "scene/border_rect.h"
 #include "scene/effect_registry.h"
 #include "scene/effect_selection.h"
@@ -462,6 +463,7 @@ namespace umbriel {
     // Change logical desktop membership through the same atomic transaction as
     // wlr-output-management. Unlike DPMS, this displaces and restores views.
     bool setOutputEnabled(Output& output, bool enabled);
+    void clearOutputPowerOverrides() { m_outputPowerOverrides.clear(); }
     // Recompute the mapping for every tablet: focused window, focused output, named output, or full layout. Called at
     // the start of every tablet event so dynamic targets reflect current focus without signal hooks.
     void remapTablets();
@@ -686,6 +688,8 @@ namespace umbriel {
     bool commitOutputEnabled(Output& target, bool enabled);
     bool initialOutputEnabled(const Output& output);
     void rememberOutputEnableOverride(const Output& output, bool enabled);
+    bool initialOutputDpmsOff(const Output& output) const;
+    void rememberOutputPowerOverride(const Output& output, bool off);
     void restoreDisplacedViews();
     void refreshDisplacedWorkspace(Workspace& workspace);
     WorkspaceGroup* workspaceGroupFromHandle(wlr_ext_workspace_group_handle_v1* handle) const;
@@ -1054,6 +1058,7 @@ namespace umbriel {
     // different identified monitors. An output-policy config reload clears
     // them.
     OutputEnableOverrides m_outputEnableOverrides;
+    OutputPowerOverrides m_outputPowerOverrides;
     Dirty m_dirty = Dirty::None;
     ViewRegistry m_registry;
     FocusManager m_focus{*this};
