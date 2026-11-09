@@ -23,6 +23,7 @@ Start with the user guide when a detail affects configuration or normal use. Use
 - [DRM GPU exclusion](drm-device-policy.md)
 - [Output power persistence proposal](output-power-persistence.md) and [implementation appraisal](output-power-persistence-review0.gpt61sol.md) — reconnect memory, wake boundaries, and cold-output discovery constraints.
 - [Output power memory implementation and gaps](output-power-persistence-implementation.gpt61sol.md) — implemented reconnect-dark contract, fail-lit compromises, verification, and possible follow-ups.
+- [Output power protocol assessment](output-power-protocol-assessment0.gpt61t.md) and [integration report](output-power-protocol-implementation.gpt61sol.md) — reused `pwr` support, commit-driven events, hotplug discovery, and remaining consumer limitations.
 
 ## Pull request template checks
 
