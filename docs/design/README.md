@@ -21,6 +21,7 @@ Start with the user guide when a detail affects configuration or normal use. Use
 - [Client buffer constraints](client-buffer-constraints.md)
 - [Scene helper ownership](scene-helper-ownership.md)
 - [DRM GPU exclusion](drm-device-policy.md)
+- [Output power persistence proposal](output-power-persistence.md) and [implementation appraisal](output-power-persistence-review0.gpt61sol.md) — reconnect memory, wake boundaries, and cold-output discovery constraints.
 
 ## Pull request template checks
 
