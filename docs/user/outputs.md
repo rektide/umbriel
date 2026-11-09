@@ -380,6 +380,10 @@ umbriel msg dpms-on DP-1
 
 The bare actions target every configured output. Input wakes all monitors when every output is powered off. Outputs disabled with `enabled = false` are not affected. DPMS does not remove an output from the logical desktop, move its windows, or exclude it from a whole-desktop capture.
 
+Power-off is remembered for the current session when the same monitor reconnects on the same connector. A changed reported monitor identity or connector starts powered on, subject to logical enablement policy. A physical disconnect still evacuates windows once; they return when the monitor powers on, not on each dark reconnect. Input during an all-dark session and bare `dpms-on` also forget power-off requests for disconnected monitors. Bare `dpms-on` succeeds even with no connected outputs.
+
+A cold reconnect can remain unavailable to Wayland clients until it is powered on. Use compositor input wake or `umbriel msg dpms-on` to wake it. Changing output-state configuration forgets reconnect power memory but does not immediately wake live DPMS-off outputs; unchanged, unrelated, and failed reloads preserve it.
+
 ## Live reconfiguration
 
 Tools such as `wlr-randr`, `kanshi`, and `wdisplays` can change enabled state, mode, position, scale, transform, and adaptive sync while Umbriel is running. Those changes last until another tool request or a changed output-state policy in the configuration replaces them. An identical or unrelated reload is inert.

@@ -22,6 +22,7 @@ Start with the user guide when a detail affects configuration or normal use. Use
 - [Scene helper ownership](scene-helper-ownership.md)
 - [DRM GPU exclusion](drm-device-policy.md)
 - [Output power persistence proposal](output-power-persistence.md) and [implementation appraisal](output-power-persistence-review0.gpt61sol.md) — reconnect memory, wake boundaries, and cold-output discovery constraints.
+- [Output power memory implementation and gaps](output-power-persistence-implementation.gpt61sol.md) — implemented reconnect-dark contract, fail-lit compromises, verification, and possible follow-ups.
 
 ## Pull request template checks
 
