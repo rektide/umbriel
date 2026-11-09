@@ -588,6 +588,7 @@ namespace umbriel {
     static void onRequestActivate(wl_listener* listener, void* data);
     static void onWorkspaceCommit(wl_listener* listener, void* data);
     static void onSetGamma(wl_listener* listener, void* data);
+    static void onOutputPowerSetMode(wl_listener* listener, void* data);
     static void onPointerDestroy(wl_listener* listener, void* data);
     static void onTouchDestroy(wl_listener* listener, void* data);
     static void onTabletDestroy(wl_listener* listener, void* data);
@@ -1020,6 +1021,7 @@ namespace umbriel {
     wl_listener m_requestActivate{};
     wl_listener m_workspaceCommit{};
     wl_listener m_setGamma{};
+    wl_listener m_outputPowerSetMode{};
     wl_listener m_outputManagerApply{};
     wl_listener m_outputManagerTest{};
     wl_listener m_outputLayoutChange{};

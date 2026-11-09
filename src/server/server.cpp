@@ -759,6 +759,13 @@ namespace umbriel {
     m_setGamma.notify = onSetGamma;
     wl_signal_add(&m_gammaManager->events.set_gamma, &m_setGamma);
 
+    wlr_output_power_manager_v1* outputPowerManager = wlr_output_power_manager_v1_create(m_display);
+    if (outputPowerManager == nullptr) {
+      throw std::runtime_error("failed to create output power manager");
+    }
+    m_outputPowerSetMode.notify = onOutputPowerSetMode;
+    wl_signal_add(&outputPowerManager->events.set_mode, &m_outputPowerSetMode);
+
     // Version 6 adds the suspended state hidden tabs are given. The window-manager capabilities version 5 sends default
     // to every capability, which is what a client assumed before, so no client sees a change in what it may ask for.
     m_xdgShell = wlr_xdg_shell_create(m_display, 6);
@@ -1017,6 +1024,7 @@ namespace umbriel {
     wl_list_remove(&m_requestActivate.link);
     wl_list_remove(&m_workspaceCommit.link);
     wl_list_remove(&m_setGamma.link);
+    wl_list_remove(&m_outputPowerSetMode.link);
     wl_list_remove(&m_outputManagerApply.link);
     wl_list_remove(&m_outputManagerTest.link);
     wl_list_remove(&m_outputLayoutChange.link);
