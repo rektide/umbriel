@@ -81,6 +81,9 @@ spawn_client
 wait_for_workspace 'HEADLESS-2:1'
 native_refuge=$("$UMBRIEL" workspaces --json | jq -r '.[] | select(.output == "HEADLESS-1" and .index == 1) | .id')
 
+# Logical disable supersedes a prior DPMS request. Re-enabling and recreating
+# must not resurrect that request from session memory.
+"$UMBRIEL" msg dpms-off HEADLESS-2 > /dev/null
 "$UMBRIEL" msg output-disable HEADLESS-2 > /dev/null
 wait_for_enabled HEADLESS-2 false
 wait_for_temporary_workspace "$native_refuge"
@@ -90,6 +93,13 @@ timeout 5s grim "$XDG_RUNTIME_DIR/output-action-desktop.png"
 "$UMBRIEL" msg output-enable HEADLESS-2 > /dev/null
 wait_for_enabled HEADLESS-2 true
 wait_for_workspace 'HEADLESS-2:1'
+"$UMBRIEL" output-destroy HEADLESS-2 > /dev/null
+"$UMBRIEL" output-create HEADLESS-2 > /dev/null
+wait_for_workspace 'HEADLESS-2:1'
+if ! "$UMBRIEL" outputs --json | jq -e 'any(.[]; .name == "HEADLESS-2" and .powered)' > /dev/null; then
+  echo "logical re-enable revived stale DPMS memory after recreation"
+  exit 1
+fi
 
 "$UMBRIEL" msg output-toggle HEADLESS-2 > /dev/null
 wait_for_enabled HEADLESS-2 false
@@ -154,3 +164,57 @@ if "$UMBRIEL" msg output-disable missing-output > /dev/null 2>&1; then
 fi
 
 echo "native output actions override config, survive full output recreation, and restore displaced windows"
+
+# Reload is selective for power memory too. Identical content, layout-only
+# changes and failed parsing preserve it across recreation. Output-policy
+# changes clear dormant choices, but deliberately leave live DPMS flags alone.
+wait_for_power() {
+  local expected=$1
+  for _ in $(seq 40); do
+    if "$UMBRIEL" outputs --json | jq -e --argjson expected "$expected" \
+      'any(.[]; .name == "HEADLESS-2" and .enabled and .powered == $expected)' > /dev/null; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  echo "expected HEADLESS-2 power $expected: $("$UMBRIEL" outputs --json)"
+  return 1
+}
+
+printf '%s\n' "$BASELINE" > "$UMBRIEL_CONFIG"
+"$UMBRIEL" msg config-reload > /dev/null
+"$UMBRIEL" msg dpms-off HEADLESS-2 > /dev/null
+for reload in identical layout invalid; do
+  case $reload in
+    layout) printf '\n[layout]\ngap = 40\n' >> "$UMBRIEL_CONFIG" ;;
+    invalid) printf '\n[output\n' >> "$UMBRIEL_CONFIG" ;;
+  esac
+  "$UMBRIEL" msg config-reload > /dev/null
+  wait_for_power false
+  "$UMBRIEL" output-destroy HEADLESS-2 > /dev/null
+  "$UMBRIEL" output-create HEADLESS-2 > /dev/null
+  wait_for_power false
+done
+
+{
+  printf '%s\n' "$BASELINE"
+  printf '\n[output.HEADLESS-2]\nscale = 1.25\n'
+} > "$UMBRIEL_CONFIG"
+"$UMBRIEL" msg config-reload > /dev/null
+wait_for_power false
+"$UMBRIEL" output-destroy HEADLESS-2 > /dev/null
+"$UMBRIEL" output-create HEADLESS-2 > /dev/null
+wait_for_power true
+wait_for_workspace 'HEADLESS-2:1'
+
+# An idempotent off request after that reload renews the forgotten choice.
+"$UMBRIEL" msg dpms-off HEADLESS-2 > /dev/null
+printf '%s\n' "$BASELINE" > "$UMBRIEL_CONFIG"
+"$UMBRIEL" msg config-reload > /dev/null
+wait_for_power false
+"$UMBRIEL" msg dpms-off HEADLESS-2 > /dev/null
+"$UMBRIEL" output-destroy HEADLESS-2 > /dev/null
+"$UMBRIEL" output-create HEADLESS-2 > /dev/null
+wait_for_power false
+
+echo "selective reload preserves power memory; output-policy reload forgets it without waking live heads"

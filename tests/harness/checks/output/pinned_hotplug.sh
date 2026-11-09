@@ -83,4 +83,31 @@ if [[ $after != "$before" ]]; then
   exit 1
 fi
 
+# A remembered-dark home is not eligible for pinned restoration on each HPD
+# pulse. Its one evacuation remains in place until compositor-side wake.
+"$UMBRIEL" msg dpms-off HEADLESS-1 > /dev/null
+"$UMBRIEL" output-destroy HEADLESS-1 > /dev/null
+for _ in $(seq 60); do
+  refuge=$("$UMBRIEL" windows --json | jq -r --arg id "$window_id" '.[] | select(.id == $id) | .workspace')
+  [[ $refuge == HEADLESS-2:* ]] && break
+  sleep 0.1
+done
+[[ $refuge == HEADLESS-2:* ]] || { echo "pinned window was not evacuated"; exit 1; }
+for pulse in 1 2; do
+  "$UMBRIEL" output-create HEADLESS-1 > /dev/null
+  workspace=$("$UMBRIEL" windows --json | jq -r --arg id "$window_id" '.[] | select(.id == $id) | .workspace')
+  if [[ $workspace != "$refuge" ]]; then
+    echo "pinned window restored onto a dark reconnect: $workspace"
+    exit 1
+  fi
+  [[ $pulse == 2 ]] || "$UMBRIEL" output-destroy HEADLESS-1 > /dev/null
+done
+"$UMBRIEL" msg dpms-on HEADLESS-1 > /dev/null
+for _ in $(seq 60); do
+  workspace=$("$UMBRIEL" windows --json | jq -r --arg id "$window_id" '.[] | select(.id == $id) | .workspace')
+  [[ $workspace == HEADLESS-1:* ]] && break
+  sleep 0.1
+done
+[[ $workspace == HEADLESS-1:* ]] || { echo "pinned window did not return after wake"; exit 1; }
+
 echo "a pinned window survived output loss with its floating geometry intact"

@@ -197,6 +197,30 @@ if ! shows_scratchpad HEADLESS-2; then
   exit 1
 fi
 
+# A dark home cannot reclaim the pad on repeated hotplug. Leave the pad hidden
+# so testing its location does not itself summon it to a different output.
+"$UMBRIEL" msg dpms-off HEADLESS-2 > /dev/null
+"$UMBRIEL" output-destroy HEADLESS-2 > /dev/null
+for _ in $(seq 40); do
+  [[ $(scratchpad_offset HEADLESS-1) == "$before" ]] && break
+  sleep 0.1
+done
+for pulse in 1 2; do
+  "$UMBRIEL" output-create HEADLESS-2 > /dev/null
+  offset=$(scratchpad_offset HEADLESS-1)
+  if [[ $offset != "$before" ]]; then
+    echo "scratchpad moved from its refuge on a dark reconnect: $offset (expected $before)"
+    exit 1
+  fi
+  [[ $pulse == 2 ]] || "$UMBRIEL" output-destroy HEADLESS-2 > /dev/null
+done
+"$UMBRIEL" msg dpms-on HEADLESS-2 > /dev/null
+"$UMBRIEL" settle > /dev/null
+if [[ $(scratchpad_offset HEADLESS-2) != "$before" ]]; then
+  echo "scratchpad did not return after wake: $(scratchpad_offset HEADLESS-2)"
+  exit 1
+fi
+
 # A visible maximized pad has manager-owned geometry. Restore it after its
 # output returns at a different mode and before the old exclusive zone returns.
 panel_log="$UMBRIEL_RUNTIME_DIR/scratchpad-restore-panel.log"
