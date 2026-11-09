@@ -185,6 +185,7 @@ namespace umbriel {
 
     applyCursorConfig();
     m_desktopEnabled = m_server->initialOutputEnabled(*this);
+    m_dpmsOff = m_desktopEnabled && m_server->initialOutputDpmsOff(*this);
     if (!applyConfiguredState()) {
       // Do not advertise a logical output whose initial backend enable failed.
       // Keeping it disabled lets a later output-enable action retry the commit.
@@ -1160,6 +1161,9 @@ namespace umbriel {
       m_dpmsOff = previousDpmsOff;
       return false;
     }
+    if (m_desktopEnabled != previousDesktopEnabled) {
+      m_server->rememberOutputPowerOverride(*this, false);
+    }
     if (desktopEnabled()) {
       wlr_output_layout_output* layoutOutput = addToLayout();
       // Re-bind the scene output after a disable removed it from the layout.
@@ -1187,6 +1191,7 @@ namespace umbriel {
       // A logical disable is not a pending DPMS request. Re-enabling through
       // output management must therefore bring the connector up.
       m_dpmsOff = false;
+      m_server->rememberOutputPowerOverride(*this, false);
     }
   }
 
@@ -1214,6 +1219,7 @@ namespace umbriel {
     }
     const bool dpmsOff = !powered;
     if (m_dpmsOff == dpmsOff) {
+      m_server->rememberOutputPowerOverride(*this, dpmsOff);
       return true;
     }
 
@@ -1223,6 +1229,7 @@ namespace umbriel {
       m_dpmsOff = previous;
       return false;
     }
+    m_server->rememberOutputPowerOverride(*this, dpmsOff);
     applyOutputEffects();
 
     if (powered) {

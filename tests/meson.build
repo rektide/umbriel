@@ -20,6 +20,7 @@ unit_tests = [
   ['keybind-parse', ['unit/keybind_parse.cpp'], []],
   ['lid-state', ['unit/lid_state.cpp'], []],
   ['output-enable-overrides', ['unit/output_enable_overrides.cpp'], []],
+  ['output-power-overrides', ['unit/output_power_overrides.cpp'], []],
   ['modifier-tap', ['unit/modifier_tap.cpp'], []],
   ['keyboard-layout', ['unit/keyboard_layout.cpp'], []],
   [

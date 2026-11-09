@@ -551,6 +551,11 @@ namespace umbriel {
     template <bool Powered> bool actionDpms(Server& server, const Keybind& bind, std::string* error) {
       const auto* arg = payloadIf<OutputArg>(bind);
       const std::string requested = arg != nullptr ? arg->output : std::string{};
+      if constexpr (Powered) {
+        if (requested.empty()) {
+          server.clearOutputPowerOverrides();
+        }
+      }
       bool found = false;
       bool changed = false;
       for (const auto& output : server.outputs()) {
@@ -569,6 +574,12 @@ namespace umbriel {
           return reject(error, "failed to change output power: " + std::string(name != nullptr ? name : "unknown"));
         }
         changed = true;
+      }
+      if constexpr (Powered) {
+        // A global on request also succeeds when every remembered head is absent.
+        if (requested.empty()) {
+          return true;
+        }
       }
       if (!found) {
         return reject(error, "unknown output: " + requested);
