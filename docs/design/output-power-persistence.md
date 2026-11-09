@@ -4,7 +4,9 @@
 the output object: the replacement starts powered-on and immediately modesets.
 This note records the problem, the preferred design (session power memory plus
 churn-free recreation), and the alternates with their trade-offs. It is the
-implementation brief for the `power-memory` workspace.
+implementation brief for the `power-memory` workspace — a feature branch cut
+from upstream `main` (freshened 2026-11-09) for reintegration through the
+`working` integration workspace.
 
 ## Problem and evidence
 
@@ -123,13 +125,15 @@ desktop-facing half of the monitor-arrives path:
   Whether the group can instead be held resident is an implementation choice;
   the constraint is no repeated per-pulse window migration.
 
-### 3. Accurate client events (already hosted)
+### 3. Accurate client events (rides the power series branch)
 
-The lineage hosts `zwlr_output_power_manager_v1`. With parts 1 and 2, bound
-clients see `mode=off` on the recreate-disabled commit and `mode=on` at wake —
-an accurate event trail instead of silent drift. No new work; it is a test
-obligation (below) and the reason clients can later drop polling-style
-stopgaps (afk-dim's `umbriel-msg` provider → its built-in `wlr-power`).
+Upstream `main` does not host `zwlr_output_power_manager_v1`; the local `pwr`
+feature branch (integrated in `working`) does. With parts 1 and 2 landed and
+the series reintegrated alongside, bound clients see `mode=off` on the
+recreate-disabled commit and `mode=on` at wake — an accurate event trail
+instead of silent drift. No new work in this branch: it is a test obligation
+(below) and the reason clients can later drop polling-style stopgaps
+(afk-dim's `umbriel-msg` provider → its built-in `wlr-power`).
 
 Estimated size: parts 1+2 together roughly 60–150 lines plus a harness check.
 
@@ -186,11 +190,12 @@ Estimated size: parts 1+2 together roughly 60–150 lines plus a harness check.
 
 ## Rollout
 
-Implement on this workspace (base: `longcat-deploy-candidate-20261022`),
-carry into the next longcat deploy candidate, rebuild, restart the session at
-a chosen moment. Afterward afk-dim switches its power provider from
-`umbriel-msg` to `wlr-power` — a config-only change; the provider is built and
-sway-verified.
+Parts 1 and 2 are self-contained and upstreamable alone from this feature
+branch. Reintegrate through the `working` integration workspace alongside the
+`pwr` power-series branch, then carry into the next longcat deploy candidate:
+rebuild, restart the session at a chosen moment. Afterward afk-dim switches
+its power provider from `umbriel-msg` to `wlr-power` — a config-only change;
+the provider is built and sway-verified.
 
 ## Provenance
 
