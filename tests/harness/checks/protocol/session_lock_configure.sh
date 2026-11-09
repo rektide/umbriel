@@ -36,6 +36,31 @@ await_lines "$PROTOCOL_LOG" "${CONFIGURE_PATTERN}.*960, 540)" 1
 "$UMBRIEL" settle > /dev/null
 assert_idle
 
+# A remembered-off recreated output must not hold lock confirmation hostage.
+# The existing lock client has no replacement surface after hotplug, so waking
+# it must expose only the compositor's opaque secure blank.
+"$UMBRIEL" msg dpms-off HEADLESS-1 > /dev/null
+"$UMBRIEL" output-destroy HEADLESS-1 > /dev/null
+"$UMBRIEL" output-create HEADLESS-1 > /dev/null
+"$UMBRIEL" msg dpms-on HEADLESS-1 > /dev/null
+timeout 5s grim -o HEADLESS-1 "$UMBRIEL_RUNTIME_DIR/lock-wake.png"
+assert_region_rgb "$UMBRIEL_RUNTIME_DIR/lock-wake.png" '100x100+20+20' 0 0 0 'hotplug wake secure blank'
+
 echo unlock >&"$lock_fd"
 await_lines "$LOCK_LOG" 'unlocked$' 1
+
+# Start a new lock with the recreated output still dark. No physical output
+# needs to present, so confirmation must arrive without waiting for wake.
+"$UMBRIEL" msg dpms-off HEADLESS-1 > /dev/null
+"$UMBRIEL" output-destroy HEADLESS-1 > /dev/null
+"$UMBRIEL" output-create HEADLESS-1 > /dev/null
+mkfifo "$UMBRIEL_RUNTIME_DIR/dark-lock-control"
+exec {dark_fd}<> "$UMBRIEL_RUNTIME_DIR/dark-lock-control"
+"$UMBRIEL_LOCK_CLIENT" <&"$dark_fd" > "$UMBRIEL_RUNTIME_DIR/dark-lock.log" 2>&1 &
+await_lines "$UMBRIEL_RUNTIME_DIR/dark-lock.log" 'locked$' 1
+"$UMBRIEL" msg dpms-on HEADLESS-1 > /dev/null
+timeout 5s grim -o HEADLESS-1 "$UMBRIEL_RUNTIME_DIR/dark-lock-wake.png"
+assert_region_rgb "$UMBRIEL_RUNTIME_DIR/dark-lock-wake.png" '100x100+20+20' 16 32 48 'dark lock wake'
+echo unlock >&"$dark_fd"
+await_lines "$UMBRIEL_RUNTIME_DIR/dark-lock.log" 'unlocked$' 1
 echo "lock surface stayed idle, resized on output change, and unlocked"

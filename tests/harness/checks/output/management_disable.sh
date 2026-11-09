@@ -142,6 +142,23 @@ sleeping_refuge=$("$UMBRIEL" workspaces --json | jq -r '.[] | select(.output == 
 mark=$(log_mark)
 "$UMBRIEL" msg dpms-off HEADLESS-2 > /dev/null
 wait_for_log_since "$mark" "output 'HEADLESS-2': powered off"
+
+# Test-only disable must not consume the off choice. An applied position-only
+# transaction keeps logical membership unchanged and must preserve it too.
+"$OUTPUT_MANAGEMENT" test disable HEADLESS-2 > /dev/null
+"$UMBRIEL" output-destroy HEADLESS-2 > /dev/null
+"$UMBRIEL" output-create HEADLESS-2 > /dev/null
+if ! "$UMBRIEL" outputs --json | jq -e 'any(.[]; .name == "HEADLESS-2" and .enabled and (.powered | not))' > /dev/null; then
+  echo "test-only output-management disable consumed power memory"
+  exit 1
+fi
+"$OUTPUT_MANAGEMENT" apply enable HEADLESS-2 "$initial_x" "$initial_y" > /dev/null
+"$UMBRIEL" output-destroy HEADLESS-2 > /dev/null
+"$UMBRIEL" output-create HEADLESS-2 > /dev/null
+if ! "$UMBRIEL" outputs --json | jq -e 'any(.[]; .name == "HEADLESS-2" and .enabled and (.powered | not))' > /dev/null; then
+  echo "geometry-only output-management transaction consumed power memory"
+  exit 1
+fi
 mark=$(log_mark)
 "$OUTPUT_MANAGEMENT" apply disable HEADLESS-1 > /dev/null
 wait_for_enabled HEADLESS-1 false
