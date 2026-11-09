@@ -27,6 +27,7 @@
 #include <string>
 #include <string_view>
 #include <sys/types.h>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -475,6 +476,14 @@ namespace umbriel {
     // output's name, or an empty string with `error` set.
     std::string createHeadlessOutput(const std::string& name, std::optional<OutputMode> mode, std::string* error);
     bool destroyOutput(const std::string& name, std::string* error);
+    // Snapshot every in-layout output's position as the established
+    // arrangement. Called after deliberate placement, never after the
+    // re-packing a removal causes, so a returning monitor restores the
+    // arrangement it left instead of being re-packed in connection order.
+    void rememberOutputArrangement();
+    // The last established position an output with this name held, kept
+    // across the output's destruction.
+    [[nodiscard]] std::optional<std::pair<int, int>> rememberedOutputPosition(const std::string& name) const;
 
     void removeOutput(Output* output);
     void reassignOutputViews(Output* source, Output* destination);
@@ -1017,6 +1026,9 @@ namespace umbriel {
     wl_listener m_layerKeyboardFocusChange{};
 
     std::vector<std::unique_ptr<Output>> m_outputs;
+    // Last known layout position per output name; survives output destruction
+    // so reconnects restore the established arrangement.
+    std::unordered_map<std::string, std::pair<int, int>> m_outputLayoutMemory;
     std::vector<std::unique_ptr<Keyboard>> m_keyboards;
     std::unique_ptr<KeyboardLeds> m_keyboardLeds;
     std::vector<std::unique_ptr<ShortcutsInhibitorWatch>> m_shortcutsInhibitors;
