@@ -3,8 +3,8 @@
 setup_focus_columns
 spawn_titled E
 wait_for_count 5
-"$UMBRIEL" msg "window-focus:$(id_of A)" > /dev/null
-sleep 0.3
+"$UMBRIEL" msg window-focus "$(id_of A)" > /dev/null
+sleep 0.3 # real time: the initial focus-reveal pan must settle before the baseline probe
 settled_shot "$UMBRIEL_RUNTIME_DIR/output-setup.png"
 if [[ ${with_layer:-false} == true ]]; then
   "$UMBRIEL_POINTER_CLIENT" 2560 720 mod none pause 60000 > "$UMBRIEL_RUNTIME_DIR/keyboard.log" 2>&1 &
@@ -15,11 +15,11 @@ if [[ ${with_layer:-false} == true ]]; then
   done
   grep -q '^keyboard-enter$' "$UMBRIEL_RUNTIME_DIR/layer.log" || { echo "exclusive layer never held seat"; exit 1; }
 fi
-"$UMBRIEL" msg "window-focus:$(id_of D)" > /dev/null
-sleep 0.5
+"$UMBRIEL" msg window-focus "$(id_of D)" > /dev/null
+sleep 0.5 # real time: sample the ring mid-journey, with the 1500 ms pan still advancing
 grim -o HEADLESS-1 "$UMBRIEL_RUNTIME_DIR/before.png"
 assert_signal "$UMBRIEL_RUNTIME_DIR/before.png" "220x160+405+280" 0.005 "source ring before cross-output activation"
-"$UMBRIEL" msg "window-focus:$(id_of E)" > /dev/null
+"$UMBRIEL" msg window-focus "$(id_of E)" > /dev/null
 sleep 0.15
 grim -o HEADLESS-1 "$UMBRIEL_RUNTIME_DIR/after.png"
 # D remains offscreen: this isolated band cannot contain its ordinary border.

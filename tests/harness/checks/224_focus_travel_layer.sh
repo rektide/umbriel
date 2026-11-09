@@ -21,8 +21,8 @@ EOF
 "$UMBRIEL" msg config-reload > /dev/null
 for title in A B C D; do spawn_titled "$title"; sleep 0.45; done
 wait_for_count 4
-"$UMBRIEL" msg "window-focus:$(id_of A)" > /dev/null
-sleep 0.3
+"$UMBRIEL" msg window-focus "$(id_of A)" > /dev/null
+sleep 0.3 # real time: the initial focus-reveal pan must settle before the baseline probe
 warmup
 settled_shot "$UMBRIEL_RUNTIME_DIR/setup.png"
 log="$UMBRIEL_RUNTIME_DIR/layer.log"
@@ -35,13 +35,13 @@ for _ in $(seq 60); do
   sleep 0.1
 done
 grep -q '^keyboard-enter$' "$log" || { echo "exclusive layer never held keyboard"; exit 1; }
-"$UMBRIEL" msg "window-focus:$(id_of D)" > /dev/null
-sleep 0.5
+"$UMBRIEL" msg window-focus "$(id_of D)" > /dev/null
+sleep 0.5 # real time: sample the ring mid-journey beneath the exclusive layer
 assert_signal_retry "220x160+405+280" 0.005 "ring beneath existing exclusive layer"
 # This kill is the tested dismissal, not exit cleanup.
 kill "$pid"
 wait "$pid" 2>/dev/null || true
-sleep 0.2
+sleep 0.2 # real time: give the layer-dismiss focus replay a beat before the replay probe
 grim "$UMBRIEL_RUNTIME_DIR/replay.png"
 assert_signal "$UMBRIEL_RUNTIME_DIR/replay.png" "220x160+405+280" 0.005 "dismissal replay preserves ring"
 settled_shot "$UMBRIEL_RUNTIME_DIR/end.png"
