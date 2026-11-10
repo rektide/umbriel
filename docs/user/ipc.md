@@ -40,8 +40,8 @@ Programs run an [action](actions.md) with a typed request instead of the words p
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `<cmd...>`                                               | `command`: string, run through the shell                                                                         |
 | submap `<name>`                                          | `submap`: string                                                                                                 |
-| `<fraction>`                                             | `fraction`: number                                                                                               |
-| `<delta>`                                                | `delta`: number                                                                                                  |
+| `<fraction> [--window <window-id>]`                      | `fraction`: number; optional `window`: string                                                                    |
+| `<delta> [--window <window-id>]`                         | `delta`: number; optional `window`: string                                                                       |
 | `<workspace> [--output <output>]`                        | `workspace`: a position number, or a name string even when it has only digits; optional `output`: string         |
 | `<output>`, `[<output>]`                                 | `output`: string, required or optional as in the argument form                                                   |
 | `<window-id>`, `[<window-id>]`                           | `window`: string, required or optional as in the argument form                                                   |

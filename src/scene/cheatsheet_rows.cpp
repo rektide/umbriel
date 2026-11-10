@@ -203,12 +203,14 @@ namespace {
         return name;
       case umbriel::ActionArgKind::Fraction:
         if (const auto* fraction = umbriel::payloadIf<umbriel::FractionArg>(bind)) {
-          return std::format("{} {:.2g}", name, fraction->fraction);
+          return std::format("{} {:.2g}", name, fraction->fraction)
+              + (fraction->id.empty() ? "" : " --window " + fraction->id);
         }
         return name;
       case umbriel::ActionArgKind::FractionDelta:
         if (const auto* fraction = umbriel::payloadIf<umbriel::FractionArg>(bind)) {
-          return std::format("{} {:+.2g}", name, fraction->fraction);
+          return std::format("{} {:+.2g}", name, fraction->fraction)
+              + (fraction->id.empty() ? "" : " --window " + fraction->id);
         }
         return name;
       case umbriel::ActionArgKind::LayoutMode:

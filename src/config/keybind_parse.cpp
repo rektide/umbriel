@@ -530,17 +530,19 @@ namespace umbriel {
          KeybindAction::WindowKill, ActionArgKind::OptionalWindowId},
         {"window-minimize", "[<window-id>]", "Minimize the focused floating window, or the given window",
          KeybindAction::WindowMinimize, ActionArgKind::OptionalWindowId},
-        {"window-modify-height-down", "<delta>", "Resize the focused window from its bottom edge",
+        {"window-modify-height-down", "<delta> [--window <window-id>]", "Resize the window from its bottom edge",
          KeybindAction::WindowModifyHeightDown, ActionArgKind::FractionDelta},
-        {"window-modify-height-up", "<delta>", "Resize the focused window from its top edge",
+        {"window-modify-height-up", "<delta> [--window <window-id>]", "Resize the window from its top edge",
          KeybindAction::WindowModifyHeightUp, ActionArgKind::FractionDelta},
-        {"window-modify-primary-extent", "<delta>", "Change the focused area's primary extent by a fraction",
-         KeybindAction::WindowModifyPrimaryExtent, ActionArgKind::FractionDelta},
-        {"window-modify-secondary-extent", "<delta>", "Change the focused area's secondary extent by a fraction",
-         KeybindAction::WindowModifySecondaryExtent, ActionArgKind::FractionDelta},
-        {"window-modify-width-left", "<delta>", "Resize the focused column from its left edge",
+        {"window-modify-primary-extent", "<delta> [--window <window-id>]",
+         "Change the area's primary extent by a fraction", KeybindAction::WindowModifyPrimaryExtent,
+         ActionArgKind::FractionDelta},
+        {"window-modify-secondary-extent", "<delta> [--window <window-id>]",
+         "Change the area's secondary extent by a fraction", KeybindAction::WindowModifySecondaryExtent,
+         ActionArgKind::FractionDelta},
+        {"window-modify-width-left", "<delta> [--window <window-id>]", "Resize the column from its left edge",
          KeybindAction::WindowModifyWidthLeft, ActionArgKind::FractionDelta},
-        {"window-modify-width-right", "<delta>", "Resize the focused column from its right edge",
+        {"window-modify-width-right", "<delta> [--window <window-id>]", "Resize the column from its right edge",
          KeybindAction::WindowModifyWidthRight, ActionArgKind::FractionDelta},
         {"window-move-by", "<delta-x> <delta-y> [--window <window-id>]", "Move the floating window by logical pixels",
          KeybindAction::WindowMoveBy, ActionArgKind::WindowMoveBy},
@@ -597,11 +599,11 @@ namespace umbriel {
          KeybindAction::WindowRestoreFromScratchpad, ActionArgKind::OptionalScratchpad},
         {"window-restore-minimized", "", "Restore the latest minimized window on this workspace",
          KeybindAction::WindowRestoreMinimized},
-        {"window-set-primary-extent", "<fraction>", "Set the focused area's primary extent fraction",
+        {"window-set-primary-extent", "<fraction> [--window <window-id>]", "Set the area's primary extent fraction",
          KeybindAction::WindowSetPrimaryExtent, ActionArgKind::Fraction},
         {"window-set-region", "<left|right|top|bottom|top_left|top_right|bottom_left|bottom_right>",
          "Place the stacking window in a half or quarter", KeybindAction::WindowSetRegion, ActionArgKind::WindowRegion},
-        {"window-set-secondary-extent", "<fraction>", "Set the focused area's secondary extent fraction",
+        {"window-set-secondary-extent", "<fraction> [--window <window-id>]", "Set the area's secondary extent fraction",
          KeybindAction::WindowSetSecondaryExtent, ActionArgKind::Fraction},
         {"window-swap-down", "", "Swap with the window below", KeybindAction::WindowSwapDown},
         {"window-swap-left", "", "Swap with the window to the left", KeybindAction::WindowSwapLeft},
@@ -881,20 +883,22 @@ namespace umbriel {
         return SubmapArg{.name = std::string(*name)};
       }
       case ActionArgKind::Fraction: {
-        const auto word = singleWord(words);
-        const auto fraction = word ? parseFraction(*word) : std::nullopt;
+        const auto split = splitActionWords(words, kFlagWindow);
+        const auto fraction =
+            split && split->positional.size() == 1 ? parseFraction(split->positional.front()) : std::nullopt;
         if (!fraction) {
           return std::nullopt;
         }
-        return FractionArg{.fraction = *fraction};
+        return FractionArg{.fraction = *fraction, .id = std::string(split->window.value_or(std::string_view{}))};
       }
       case ActionArgKind::FractionDelta: {
-        const auto word = singleWord(words);
-        const auto delta = word ? parseFractionDelta(*word) : std::nullopt;
+        const auto split = splitActionWords(words, kFlagWindow);
+        const auto delta =
+            split && split->positional.size() == 1 ? parseFractionDelta(split->positional.front()) : std::nullopt;
         if (!delta) {
           return std::nullopt;
         }
-        return FractionArg{.fraction = *delta};
+        return FractionArg{.fraction = *delta, .id = std::string(split->window.value_or(std::string_view{}))};
       }
       case ActionArgKind::Workspace: {
         const auto split = splitActionWords(words, kFlagOutput | kFlagName);

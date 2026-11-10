@@ -234,6 +234,7 @@ namespace umbriel {
 
   struct FractionArg {
     double fraction = 0.0;
+    std::string id = {}; // empty = the focused window
     bool operator==(const FractionArg&) const = default;
   };
   struct WorkspaceIndex {

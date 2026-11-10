@@ -221,20 +221,21 @@ namespace umbriel {
     bool toggleDwindleSplit();
     bool cycleFocusedWidth(int direction);
     bool cycleFocusedHeight(int direction);
-    bool setFocusedWidth(double fraction);
+    // An explicit target resizes without changing focus or revealing a column.
+    bool setFocusedWidth(double fraction, View* target = nullptr);
     bool centerFocusedColumn();
     // Incremental width change: apply `delta` to the focused column's current
     // width fraction, clamped to [0.1, 1.0].
-    bool modifyFocusedWidth(double delta);
-    bool setFocusedHeight(double fraction);
-    bool modifyFocusedHeight(double delta);
+    bool modifyFocusedWidth(double delta, View* target = nullptr);
+    bool setFocusedHeight(double fraction, View* target = nullptr);
+    bool modifyFocusedHeight(double delta, View* target = nullptr);
     // Edge-anchored resize of the focused window: `edges` names the moving edge
     // (exactly one of WLR_EDGE_LEFT/RIGHT/TOP/BOTTOM) and `delta` is a signed
     // fraction of the usable extent on that edge's axis. Unlike
     // modifyFocusedWidth/Height the opposite edge stays put, so a positive delta
     // grows the window from that edge until the size saturates. An edge the active
     // layout cannot resize leaves the window untouched.
-    bool resizeFocusedEdge(uint32_t edges, double delta);
+    bool resizeFocusedEdge(uint32_t edges, double delta, View* target = nullptr);
     bool toggleFocusedFullWidth();
     bool toggleFocusedMaximizedToEdges();
     bool toggleFocusedFullscreen();
