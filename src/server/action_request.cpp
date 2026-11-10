@@ -240,7 +240,9 @@ namespace umbriel {
       }
       case ActionArgKind::Fraction: {
         FractionArg arg;
-        if (!fields.only({"fraction"}) || !fields.number("fraction", arg.fraction)) {
+        if (!fields.only({"fraction", "window"})
+            || !fields.number("fraction", arg.fraction)
+            || !fields.string("window", false, arg.id)) {
           return std::nullopt;
         }
         if (!validActionFraction(arg.fraction)) {
@@ -251,7 +253,9 @@ namespace umbriel {
       }
       case ActionArgKind::FractionDelta: {
         FractionArg arg;
-        if (!fields.only({"delta"}) || !fields.number("delta", arg.fraction)) {
+        if (!fields.only({"delta", "window"})
+            || !fields.number("delta", arg.fraction)
+            || !fields.string("window", false, arg.id)) {
           return std::nullopt;
         }
         if (!validActionFractionDelta(arg.fraction)) {
@@ -454,6 +458,7 @@ namespace umbriel {
             request["submap"] = arg.name;
           } else if constexpr (std::is_same_v<Arg, FractionArg>) {
             request[spec->argKind == ActionArgKind::FractionDelta ? "delta" : "fraction"] = arg.fraction;
+            putIfSet(request, "window", arg.id);
           } else if constexpr (std::is_same_v<Arg, WorkspaceArg>) {
             putWorkspace(request, arg);
           } else if constexpr (std::is_same_v<Arg, WorkspaceMoveToOutputArg>) {

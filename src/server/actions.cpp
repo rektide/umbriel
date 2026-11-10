@@ -1187,7 +1187,40 @@ namespace umbriel {
       return true;
     }
 
-    bool actionSetWidth(Server& server, const Keybind& bind, std::string* /*error*/) {
+    template <bool Width, bool Modify>
+    bool resizeWindowFraction(Server& server, const FractionArg& arg, std::string* error) {
+      const auto target = placementTarget(server, arg.id);
+      if (!target.has_value()) {
+        return reject(error, target.error());
+      }
+      View* view = *target;
+      if (view->floating()) {
+        double fraction = arg.fraction;
+        if constexpr (Modify) {
+          const auto current = view->floatingFraction(Width);
+          if (!current) {
+            return true;
+          }
+          fraction += *current;
+        }
+        fraction = std::clamp(fraction, 0.1, 1.0);
+        view->resizeFloatingFractions(
+            Width ? std::optional(fraction) : std::nullopt, Width ? std::nullopt : std::optional(fraction)
+        );
+      } else if (Workspace* workspace = view->workspace()) {
+        const bool changed = Width ? (Modify ? workspace->modifyFocusedWidth(arg.fraction, view)
+                                             : workspace->setFocusedWidth(arg.fraction, view))
+                                   : (Modify ? workspace->modifyFocusedHeight(arg.fraction, view)
+                                             : workspace->setFocusedHeight(arg.fraction, view));
+        invalidateHoverFocusAfterSceneChange(server, changed);
+      }
+      return true;
+    }
+
+    bool actionSetWidth(Server& server, const Keybind& bind, std::string* error) {
+      if (const auto* arg = payloadIf<FractionArg>(bind); arg != nullptr && !arg->id.empty()) {
+        return resizeWindowFraction<true, false>(server, *arg, error);
+      }
       if (View* view = placementTarget(server, {}, FocusSource::Scratchpad).value_or(nullptr)) {
         if (const auto* arg = payloadIf<FractionArg>(bind)) {
           view->resizeFloatingFractions(std::clamp(arg->fraction, 0.1, 1.0), std::nullopt);
@@ -1202,7 +1235,10 @@ namespace umbriel {
       return true;
     }
 
-    bool actionModifyWidth(Server& server, const Keybind& bind, std::string* /*error*/) {
+    bool actionModifyWidth(Server& server, const Keybind& bind, std::string* error) {
+      if (const auto* arg = payloadIf<FractionArg>(bind); arg != nullptr && !arg->id.empty()) {
+        return resizeWindowFraction<true, true>(server, *arg, error);
+      }
       if (View* view = placementTarget(server, {}, FocusSource::Scratchpad).value_or(nullptr)) {
         if (const auto* arg = payloadIf<FractionArg>(bind); arg != nullptr) {
           if (const auto current = view->floatingFraction(true)) {
@@ -1219,7 +1255,10 @@ namespace umbriel {
       return true;
     }
 
-    bool actionSetHeight(Server& server, const Keybind& bind, std::string* /*error*/) {
+    bool actionSetHeight(Server& server, const Keybind& bind, std::string* error) {
+      if (const auto* arg = payloadIf<FractionArg>(bind); arg != nullptr && !arg->id.empty()) {
+        return resizeWindowFraction<false, false>(server, *arg, error);
+      }
       if (View* view = placementTarget(server, {}, FocusSource::Scratchpad).value_or(nullptr)) {
         if (const auto* arg = payloadIf<FractionArg>(bind)) {
           view->resizeFloatingFractions(std::nullopt, std::clamp(arg->fraction, 0.1, 1.0));
@@ -1234,7 +1273,10 @@ namespace umbriel {
       return true;
     }
 
-    bool actionModifyHeight(Server& server, const Keybind& bind, std::string* /*error*/) {
+    bool actionModifyHeight(Server& server, const Keybind& bind, std::string* error) {
+      if (const auto* arg = payloadIf<FractionArg>(bind); arg != nullptr && !arg->id.empty()) {
+        return resizeWindowFraction<false, true>(server, *arg, error);
+      }
       if (View* view = placementTarget(server, {}, FocusSource::Scratchpad).value_or(nullptr)) {
         if (const auto* arg = payloadIf<FractionArg>(bind); arg != nullptr) {
           if (const auto current = view->floatingFraction(false)) {
@@ -1254,9 +1296,22 @@ namespace umbriel {
     // Edge-anchored resize: `Edges` names the edge that moves and the opposite
     // one stays put, so a positive argument grows the window there until the size
     // saturates.
-    template <uint32_t Edges> bool actionResizeEdge(Server& server, const Keybind& bind, std::string* /*error*/) {
+    template <uint32_t Edges> bool actionResizeEdge(Server& server, const Keybind& bind, std::string* error) {
       const auto* arg = payloadIf<FractionArg>(bind);
       if (arg == nullptr) {
+        return true;
+      }
+      if (!arg->id.empty()) {
+        const auto target = placementTarget(server, arg->id);
+        if (!target.has_value()) {
+          return reject(error, target.error());
+        }
+        View* view = *target;
+        if (view->floating()) {
+          view->resizeFloatingEdge(Edges, arg->fraction);
+        } else if (Workspace* workspace = view->workspace()) {
+          invalidateHoverFocusAfterSceneChange(server, workspace->resizeFocusedEdge(Edges, arg->fraction, view));
+        }
         return true;
       }
       if (View* view = placementTarget(server, {}, FocusSource::Scratchpad).value_or(nullptr)) {
