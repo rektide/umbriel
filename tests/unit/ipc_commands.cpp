@@ -358,9 +358,9 @@ namespace {
     case ActionArgKind::Submap:
       return {" 'my map'"};
     case ActionArgKind::Fraction:
-      return {" 0.5"};
+      return {" 0.5", " 0.5 --window w1", " --window w1 0.5"};
     case ActionArgKind::FractionDelta:
-      return {" -0.25"};
+      return {" -0.25", " +0.1 --window w1", " --window w1 -0.25"};
     case ActionArgKind::WorkspaceMoveToOutput:
       return {
           " DP-2", " current 3 --output DP-1", " --output DP-1 current --name 2", " 'Vendor Model Serial' 'My web'"
@@ -462,6 +462,11 @@ UMBRIEL_TEST(actionRequestsRejectMalformedFieldsWithTheReason) {
       {R"({"cmd":"action","action":"workspace-switch","workspace":0})", "position must be 1 to 64"},
       {R"({"cmd":"action","action":"workspace-switch","workspace":2.5})", "position number or a non-empty name"},
       {R"({"cmd":"action","action":"window-set-primary-extent","fraction":9})", R"("fraction" must be)"},
+      {R"({"cmd":"action","action":"window-set-primary-extent","fraction":0.5,"window":""})",
+       R"("window" must be a non-empty string)"},
+      {R"({"cmd":"action","action":"window-modify-width-right","delta":0.1,"window":7})",
+       R"("window" must be a non-empty string)"},
+      {R"({"cmd":"action","action":"window-modify-height-up","window":"w1"})", R"(missing "delta")"},
       {R"({"cmd":"action","action":"column-focus-tab","index":0})", R"("index" must not be 0)"},
       // Unsigned JSON integers past the signed range must not wrap into an accepted value.
       {R"({"cmd":"action","action":"column-focus-tab","index":18446744073709551615})", R"("index" is out of range)"},
