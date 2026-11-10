@@ -363,6 +363,34 @@ UMBRIEL_TEST(rejectsRemovedWidthAndHeightActions) {
   }
 }
 
+UMBRIEL_TEST(parsesWindowQualifiedSizingActions) {
+  for (const auto& spec : umbriel::actionSpecs()) {
+    const bool delta = spec.argKind == umbriel::ActionArgKind::FractionDelta;
+    if (!delta && spec.argKind != umbriel::ActionArgKind::Fraction) {
+      continue;
+    }
+    const std::string name(spec.name);
+    const std::string value = delta ? "+0.1" : "0.5";
+    Keybind bind;
+    CHECK(parseAction(name + " " + value, bind));
+    CHECK(
+        (std::get<umbriel::FractionArg>(bind.payload) == umbriel::FractionArg{.fraction = delta ? 0.1 : 0.5, .id = ""})
+    );
+    for (const auto& words : {" " + value + " --window abc", " --window abc " + value}) {
+      CHECK(parseAction(name + words, bind));
+      CHECK(
+          (std::get<umbriel::FractionArg>(bind.payload)
+           == umbriel::FractionArg{.fraction = delta ? 0.1 : 0.5, .id = "abc"})
+      );
+    }
+    CHECK(!parseAction(name + " " + value + " --window", bind));
+    CHECK(!parseAction(name + " " + value + " --window ''", bind));
+    CHECK(!parseAction(name + " " + value + " --window abc --window def", bind));
+    CHECK(!parseAction(name + " " + value + " abc", bind));
+    CHECK(!parseAction(name + " --window abc", bind));
+  }
+}
+
 UMBRIEL_TEST(parsesLayoutModeActions) {
   Keybind bind;
   CHECK(parseAction("workspace-set-layout scrolling", bind));
@@ -1134,7 +1162,7 @@ UMBRIEL_TEST(everyAdvertisedActionParsesWithItsDeclaredArgument) {
     case ActionArgKind::Submap:
       return "<name>";
     case ActionArgKind::Fraction:
-      return "<fraction>";
+      return "<fraction> [--window <window-id>]";
     case ActionArgKind::WorkspaceMoveToOutput:
       return "<destination> [<workspace>] [--output <output>]";
     case ActionArgKind::Workspace:
@@ -1162,7 +1190,7 @@ UMBRIEL_TEST(everyAdvertisedActionParsesWithItsDeclaredArgument) {
     case ActionArgKind::OptionalWindowId:
       return "[<window-id>]";
     case ActionArgKind::FractionDelta:
-      return "<delta>";
+      return "<delta> [--window <window-id>]";
     case ActionArgKind::LayoutMode:
       return "<scrolling|dwindle|master|stacking|toggle [mode1 mode2 ...]>";
     case ActionArgKind::WindowRegion:
