@@ -642,7 +642,7 @@ namespace umbriel {
     m_hasFullscreenRestoreBox = false;
     clearRegionState();
     m_restorePinnedAfterFullscreen = false;
-    m_xCompositorFullscreen = false;
+    m_compositorFullscreen = false;
     if (m_pinned) {
       m_pinned = false;
       m_restoreTiledAfterUnpin = false;

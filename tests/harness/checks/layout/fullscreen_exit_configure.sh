@@ -8,6 +8,7 @@ readonly LAYER_CLIENT="${UMBRIEL_LAYER_CLIENT:-./build-debug/tests/layer-client}
 readonly CLIENT_LOG="$UMBRIEL_RUNTIME_DIR/fullscreen-exit-configure-client.log"
 readonly PANEL_LOG="$UMBRIEL_RUNTIME_DIR/fullscreen-exit-configure-panel.log"
 readonly TITLE=fullscreen-exit-configure
+readonly CONTROL_FIFO="$UMBRIEL_RUNTIME_DIR/fullscreen-exit-control"
 
 cat >> "$UMBRIEL_CONFIG" <<'EOF'
 
@@ -31,7 +32,10 @@ if ! grep -q '^ready$' "$PANEL_LOG"; then
   exit 1
 fi
 
-env LOG_CONFIGURES=1 "$CLIENT" "$TITLE" 640 480 > "$CLIENT_LOG" 2>&1 &
+mkfifo "$CONTROL_FIFO"
+exec {control_fd}<>"$CONTROL_FIFO"
+env LOG_CONFIGURES=1 FULLSCREEN_ON_STDIN=1 "$CLIENT" "$TITLE" 640 480 \
+  <&"$control_fd" > "$CLIENT_LOG" 2>&1 &
 
 wait_for_window() {
   local expression=$1 message=$2 windows=
@@ -144,6 +148,21 @@ if [[ $fullscreen_event != "configured-state=$output_size fullscreen" ]]; then
 fi
 sleep 0.1
 
+# A native Wine client can immediately reject the compositor's fullscreen toggle.
+# Its reply must retain both fullscreen and the output size, without a windowed configure in between.
+before_reject_count=$(grep -c '^configured-state=' "$CLIENT_LOG")
+before_windowed_count=$(grep -c '^configured-state=.* windowed$' "$CLIENT_LOG")
+printf u >&"$control_fd"
+wait_for_event_count unfullscreen-requested 1
+wait_for_configure_count "$((before_reject_count + 1))"
+"$UMBRIEL" settle > /dev/null
+if [[ $(grep -c '^configured-state=.* windowed$' "$CLIENT_LOG") != "$before_windowed_count" \
+   || $(grep '^configured-state=' "$CLIENT_LOG" | tail -1) != "$fullscreen_event" ]]; then
+  echo "client rejection undid compositor fullscreen or its output size: $(< "$CLIENT_LOG")"
+  exit 1
+fi
+wait_for_fullscreen true "client rejection undid compositor fullscreen"
+
 before_exit_count=$(grep -c '^configured-state=.* windowed$' "$CLIENT_LOG")
 "$UMBRIEL" msg window-toggle-fullscreen > /dev/null
 wait_for_fullscreen false "client did not leave fullscreen"
@@ -155,6 +174,17 @@ if [[ $exit_event != "$normal_event" ]]; then
   echo "configure log: $(< "$CLIENT_LOG")"
   exit 1
 fi
+
+# Fullscreen entered by the application remains application-controlled after the user releases ownership.
+fullscreen_count=$(grep -Fxc "$fullscreen_event" "$CLIENT_LOG")
+printf f >&"$control_fd"
+wait_for_event_count fullscreen-requested 1
+wait_for_event_count "$fullscreen_event" "$((fullscreen_count + 1))"
+normal_count=$(grep -Fxc "$normal_event" "$CLIENT_LOG")
+printf u >&"$control_fd"
+wait_for_event_count unfullscreen-requested 2
+wait_for_event_count "$normal_event" "$((normal_count + 1))"
+wait_for_fullscreen false "client could not leave its own fullscreen state"
 
 fullscreen_count=$(grep -Fxc "$fullscreen_event" "$CLIENT_LOG")
 "$UMBRIEL" msg window-toggle-fullscreen > /dev/null

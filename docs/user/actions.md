@@ -196,7 +196,7 @@ No window ID is needed: a bare `window-kill` targets the focused window, includi
 
 Use `umbriel msg window-kill` from a terminal, or add a window id to target a specific window using an ID from `umbriel windows`.
 
-For Xwayland windows, fullscreen entered with `window-toggle-fullscreen` remains compositor-owned until an Umbriel action exits it. Fullscreen entered by the application remains client-controlled.
+Fullscreen entered with `window-toggle-fullscreen` remains compositor-owned until an Umbriel action exits it, for both Wayland and Xwayland windows. Fullscreen entered by the application remains client-controlled.
 
 ## Scratchpad
 

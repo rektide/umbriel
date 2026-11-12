@@ -78,7 +78,7 @@ if ! grep -q '^fullscreen-requested=false$' "$CLIENT_LOG"; then
   echo "the X11 client did not send its unfullscreen request: $(tr '\n' '|' < "$CLIENT_LOG")"
   exit 1
 fi
-wait_for_log "$LOG_MARK" "request_fullscreen denied for compositor-owned X11" \
+wait_for_log "$LOG_MARK" "request_fullscreen denied for compositor-owned" \
   "the compositor did not reject the X11 unfullscreen request"
 wait_for_fullscreen true "an X11 request overrode compositor-owned fullscreen"
 
