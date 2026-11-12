@@ -703,9 +703,8 @@ namespace umbriel {
                                                     : workspace->presentedTiledBox(&view, layout);
         entry["x"] = box.x;
         entry["y"] = box.y;
-      } else if (
-          (view.floating() && server.cursor()->isDraggingView(&view)) || server.cursor()->toplevelDragView() == &view
-      ) {
+      } else if ((view.floating() && server.cursor()->isDraggingView(&view))
+                 || server.cursor()->toplevelDragView() == &view) {
         // Floating and data-device toplevel drags move the scene node before
         // committing the saved target.
         entry["x"] = view.layoutX();
@@ -1405,6 +1404,8 @@ namespace umbriel {
        &IpcCommands::effects, &printEffects},
       {"windows", "", "list windows (app id and title)", IpcCommandGroup::Inspect, false, &IpcCommands::windows,
        &printWindows},
+      {"layout-state", "", "inspect conditional scrolling allocation state", IpcCommandGroup::Inspect, false,
+       &IpcCommands::layoutState, nullptr},
       {"focused-window", "", "print the focused window (app id and title)", IpcCommandGroup::Inspect, false,
        &IpcCommands::focusedWindow, &printWindowRow},
       {"workspaces", "", "list workspaces and their layouts", IpcCommandGroup::Inspect, false, &IpcCommands::workspaces,

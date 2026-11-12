@@ -18,6 +18,7 @@ Replies use `{"ok": ...}` or `{"err": "..."}`. Commands that take arguments send
 | ------------------------------------------------ | ------------------------------------------ |
 | `{"cmd":"effects"}`                              | `umbriel effects --json`                   |
 | `{"cmd":"windows"}`                              | `umbriel windows --json`                   |
+| `{"cmd":"layout-state"}`                         | `umbriel layout-state --json` — [conditional allocation](layout-control.md) |
 | `{"cmd":"focused-window"}`                       | `umbriel focused-window --json`            |
 | `{"cmd":"workspaces"}`                           | `umbriel workspaces --json`                |
 | `{"cmd":"submap"}`                               | `umbriel submap --json`                    |

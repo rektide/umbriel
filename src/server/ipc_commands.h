@@ -23,6 +23,7 @@ namespace umbriel {
     static std::optional<EffectAudio> parseAudioSpectrum(const nlohmann::json& request);
     static nlohmann::json effects(Server& server, IpcArgs args);
     static nlohmann::json windows(Server& server, IpcArgs args);
+    static nlohmann::json layoutState(Server& server, IpcArgs args);
     static nlohmann::json focusedWindow(Server& server, IpcArgs args);
     static nlohmann::json workspaces(Server& server, IpcArgs args);
     static nlohmann::json submap(Server& server, IpcArgs args);
@@ -32,6 +33,8 @@ namespace umbriel {
     static nlohmann::json tearing(Server& server, IpcArgs args);
     // Runs a structured action request ({"cmd":"action", ...}); see server/action_request.h.
     static nlohmann::json action(Server& server, const nlohmann::json& request);
+    // Runs a structured conditional layout allocation ({"cmd":"layout-allocate", ...}); see ipc_layout.cpp.
+    static nlohmann::json layoutAllocate(Server& server, const nlohmann::json& request);
     static nlohmann::json outputCreate(Server& server, IpcArgs args);
     static nlohmann::json outputDestroy(Server& server, IpcArgs args);
     static nlohmann::json configReplace(Server& server, IpcArgs args);

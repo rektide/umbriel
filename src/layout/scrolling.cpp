@@ -1149,13 +1149,11 @@ namespace umbriel {
       revealColumn(columnIndex, viewportPrimary, true);
       // Always centers by the user's standing choice, so only OnOverflow's centering is the policy's to take back.
       m_policyCenteredRest = m_config->scrolling.centerFocused == CenterFocusedColumn::OnOverflow;
-    } else if (
-        m_config->scrolling.centerFocused == CenterFocusedColumn::OnOverflow
-        && m_policyCenteredRest
-        // A pannable column never pairs up again, so its centering is not stale: undoing it here would jump past the
-        // pan rule and lose the column off screen.
-        && !pansWide(columnIndex, viewportPrimary)
-    ) {
+    } else if (m_config->scrolling.centerFocused == CenterFocusedColumn::OnOverflow
+               && m_policyCenteredRest
+               // A pannable column never pairs up again, so its centering is not stale: undoing it here would jump past
+               // the pan rule and lose the column off screen.
+               && !pansWide(columnIndex, viewportPrimary)) {
       // The pair fits again, so a centering the policy made is stale. A plain fit would keep it, the column being fully
       // visible already: put the pair back at the edge it reads from, where the focus move left the strip.
       m_centeredRest = false;
@@ -1446,6 +1444,36 @@ namespace umbriel {
     // A lone row is not automatically full height: the edge gaps it can be dragged away from count towards the
     // column's weight, so the same weight-over-total ratio describes solo and stacked rows alike.
     return std::max(kMinHeightWeight, heightWeight(columnIndex, row)) / columnTotalWeight(column);
+  }
+
+  bool ScrollingLayout::setColumnWeights(int columnIndex, std::span<const double> weights, double top, double bottom) {
+    if (columnIndex < 0 || columnIndex >= static_cast<int>(m_columns.size())) {
+      return false;
+    }
+    Column& column = m_columns[static_cast<size_t>(columnIndex)];
+    if (!column.tabs.empty()
+        || weights.size() != column.views.size()
+        || weights.empty()
+        || !std::isfinite(top)
+        || !std::isfinite(bottom)
+        || top < 0.0
+        || bottom < 0.0) {
+      return false;
+    }
+    double total = top + bottom;
+    for (double weight : weights) {
+      if (!std::isfinite(weight) || weight < kMinHeightWeight) {
+        return false;
+      }
+      total += weight;
+    }
+    if (!std::isfinite(total)) {
+      return false;
+    }
+    column.heightWeights.assign(weights.begin(), weights.end());
+    column.topGapWeight = top;
+    column.bottomGapWeight = bottom;
+    return true;
   }
 
   bool ScrollingLayout::setHeightFraction(View* view, double fraction) {

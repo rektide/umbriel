@@ -33,13 +33,15 @@ namespace umbriel {
       EventScreenCast = 1 << 6,
       EventLayers = 1 << 7,
       EventOutputs = 1 << 8,
+      EventLayoutState = 1 << 9,
     };
     // Number of bits above; sizes the last-broadcast cache.
-    static constexpr size_t kEventCount = 9;
+    static constexpr size_t kEventCount = 10;
     // Subscribable names in bit order: the subscribe handler matches against this table and `umbriel subscribe`
     // lists it, so a new family cannot be accepted by one and unknown to the other.
     static constexpr std::array<std::string_view, kEventCount> kEventNames = {
-        "theme", "overview", "keyboard_layout", "windows", "workspaces", "submap", "screencast", "layers", "outputs"
+        "theme",  "overview",   "keyboard_layout", "windows", "workspaces",
+        "submap", "screencast", "layers",          "outputs", "layout-state"
     };
 
     Ipc(Server& server, const std::string& waylandSocketName);
@@ -54,10 +56,19 @@ namespace umbriel {
     void notifySubmapChanged();
     void notifyScreenCastChanged();
     // Paced: these families can change on every pointer motion or layer commit, and each event is a full snapshot.
-    void notifyWindowsChanged() { m_windowsPacer.schedule(); }
-    void notifyWorkspacesChanged() { m_workspacesPacer.schedule(); }
+    // The layout-state snapshot derives from the same state as the windows snapshot, so it is refreshed alongside it;
+    // per-family byte deduplication drops the rebuild when no allocation input changed.
+    void notifyWindowsChanged() {
+      m_windowsPacer.schedule();
+      m_layoutStatePacer.schedule();
+    }
+    void notifyWorkspacesChanged() {
+      m_workspacesPacer.schedule();
+      m_layoutStatePacer.schedule();
+    }
     void notifyLayersChanged() { m_layersPacer.schedule(); }
     void notifyOutputsChanged() { m_outputsPacer.schedule(); }
+    void notifyLayoutStateChanged() { m_layoutStatePacer.schedule(); }
 #ifdef UMBRIEL_HARNESS
     void setEventPacingHeld(bool held);
 #endif
@@ -126,6 +137,7 @@ namespace umbriel {
     EventPacer m_workspacesPacer;
     EventPacer m_layersPacer;
     EventPacer m_outputsPacer;
+    EventPacer m_layoutStatePacer;
   };
 
 } // namespace umbriel

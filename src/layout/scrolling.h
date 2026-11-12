@@ -92,6 +92,8 @@ namespace umbriel {
     double widthFraction(int columnIndex) const override;
     double heightFraction(const View* view) const override;
     bool setHeightFraction(View* view, double fraction) override;
+    // One untabbed column allocation. Validate every value before changing any state.
+    bool setColumnWeights(int columnIndex, std::span<const double> weights, double top, double bottom);
 
     uint32_t resizeEdgesAt(const View* view, double cx, double cy) const override;
     uint32_t sanitizeResizeEdges(const View* view, uint32_t edges) const override;

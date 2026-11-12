@@ -135,6 +135,11 @@ namespace umbriel {
       return nlohmann::json{{"event", "outputs"}, {"data", IpcCommands::outputs(server, {}).at("ok")}};
     }
 
+    nlohmann::json layoutStateEvent(Server& server) {
+      // Same reuse as windowsEvent: the event and `umbriel layout-state` are the one payload.
+      return nlohmann::json{{"event", "layout-state"}, {"data", IpcCommands::layoutState(server, {}).at("ok")}};
+    }
+
     nlohmann::json screenCastEvent(Server& server) {
       const ScreenCastCommand& command = server.screenCastCommand();
       nlohmann::json data{{"serial", command.serial}};
@@ -168,7 +173,8 @@ namespace umbriel {
       : m_server(&server), m_windowsPacer(snapshotPacer(EventWindows, windowsEvent)),
         m_workspacesPacer(snapshotPacer(EventWorkspaces, workspacesEvent)),
         m_layersPacer(snapshotPacer(EventLayers, layersEvent)),
-        m_outputsPacer(snapshotPacer(EventOutputs, outputsEvent)) {
+        m_outputsPacer(snapshotPacer(EventOutputs, outputsEvent)),
+        m_layoutStatePacer(snapshotPacer(EventLayoutState, layoutStateEvent)) {
     const char* runtimeDir = std::getenv("XDG_RUNTIME_DIR");
     if (runtimeDir == nullptr || runtimeDir[0] == '\0') {
       kLog.error("XDG_RUNTIME_DIR not set, IPC socket disabled");
@@ -601,6 +607,10 @@ namespace umbriel {
     if (cmd == "action") {
       return IpcCommands::action(*m_server, req).dump();
     }
+    // layout-allocate carries a structured request object, like action, rather than the string-arg command table.
+    if (cmd == "layout-allocate") {
+      return IpcCommands::layoutAllocate(*m_server, req).dump();
+    }
     if (cmd == "subscribe") {
       if (!req.contains("events") || !req["events"].is_array() || req["events"].empty()) {
         return R"({"err":"malformed request"})";
@@ -674,6 +684,9 @@ namespace umbriel {
       if ((requested & Ipc::EventOutputs) != 0) {
         appendPaced(Ipc::EventOutputs, outputsEvent(*m_server));
       }
+      if ((requested & Ipc::EventLayoutState) != 0) {
+        appendPaced(Ipc::EventLayoutState, layoutStateEvent(*m_server));
+      }
       return response;
     }
 #ifdef UMBRIEL_HARNESS
@@ -739,7 +752,8 @@ namespace umbriel {
 
 #ifdef UMBRIEL_HARNESS
   void Ipc::setEventPacingHeld(bool held) {
-    for (EventPacer* pacer : {&m_windowsPacer, &m_workspacesPacer, &m_layersPacer, &m_outputsPacer}) {
+    for (EventPacer* pacer :
+         {&m_windowsPacer, &m_workspacesPacer, &m_layersPacer, &m_outputsPacer, &m_layoutStatePacer}) {
       pacer->setIntervalHeld(held);
     }
   }

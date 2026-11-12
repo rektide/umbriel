@@ -891,6 +891,7 @@ core_sources = files(
   'src/server/event_pacer.cpp',
   'src/server/ipc.cpp',
   'src/server/ipc_commands.cpp',
+  'src/server/ipc_layout.cpp',
 )
 
 umbriel_core_deps = [
